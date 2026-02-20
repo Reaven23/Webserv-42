@@ -3,6 +3,7 @@
 #include <sys/time.h>
 
 #include <cstdio>
+#include <ctime>
 
 using namespace std;
 
