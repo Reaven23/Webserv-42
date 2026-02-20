@@ -1,0 +1,4 @@
+# Utilise le style de base LLVM, ou tout autre style de votre choix (Google, WebKit, etc.)
+BasedOnStyle: Google
+# Définit la taille de l'indentation à 2 espaces
+IndentWidth: 2
