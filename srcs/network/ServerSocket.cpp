@@ -1,5 +1,6 @@
-#include "../includes/ServerSocket.hpp"
+#include "../../includes/network/ServerSocket.hpp"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -9,9 +10,14 @@
 #include <stdexcept>
 #include <string>
 
+#include "../../includes/network/helpers.hpp"
+
+using namespace std;
+
 ServerSocket::ServerSocket(int port) {
-  if (port < 0 || port > 65535) throw std::invalid_argument("invalid port");
+  if (port < 0 || port > 65535) throw invalid_argument("invalid port");
   _port = port;
+
   // socket() creates a file descriptor for network communication.
   //   - AF_INET     : use IPv4 protocol (as opposed to AF_INET6 for IPv6)
   //   - SOCK_STREAM : TCP socket (reliable, ordered byte stream;
@@ -21,8 +27,14 @@ ServerSocket::ServerSocket(int port) {
   //   SOCK_STREAM)
   _fd = socket(AF_INET, SOCK_STREAM, 0);
   if (_fd == -1) {
-    throw std::runtime_error(std::string("socket(): Fatal error: ") +
-                             strerror(errno));
+    throw runtime_error(string("socket(): Fatal error: ") + strerror(errno));
+  }
+
+  // Allow reuse port that have just been used
+  int opt = 1;
+  if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    throw runtime_error(string("setsockopt(): Fatal error: ") +
+                        strerror(errno));
   }
 
   // sockaddr_in is a struct that describes an IPv4 address (IP + port).
@@ -54,17 +66,23 @@ ServerSocket::ServerSocket(int port) {
   // anything.
   if (bind(_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
     close(_fd);
-    throw std::runtime_error(std::string("bind(): Fatal error: ") +
-                             strerror(errno));
+    throw runtime_error(string("bind(): Fatal error: ") + strerror(errno));
+  }
+
+  if (!setSocketNonBlocking(_fd)) {
+    throw runtime_error(string("fnctl(): Error when setting socket to "
+                               "non-blocking mode: ") +
+                        strerror(errno));
   }
 
   // listen() puts the socket in listening mode: it can now accept incoming
   // connections.
   //   - serverServerSocket : the socket fd (already bound)
-  //   - 5            : backlog size = max number of pending connections waiting
+  //   - 5            : backlog size = max number of pending connections
+  //   waiting
   //                   in the queue before the OS starts refusing new ones.
-  //                   SOMAXCONN is the maximum size, usually 128. This is NOT
-  //                   the max number of connected clients.
+  //                   SOMAXCONN is the maximum size, usually 128. This is
+  //                   NOT the max number of connected clients.
   if (listen(_fd, SOMAXCONN) == -1) {
     close(_fd);
     throw std::runtime_error(std::string("listen(): Fatal error: ") +

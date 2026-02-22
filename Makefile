@@ -23,7 +23,13 @@ INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
 # Sources
 SRCS_DIR			= srcs/
 SRCS_FILES		= main.cpp \
-								ServerSocket.cpp \
+								config/Config.cpp \
+								config/LocationConfig.cpp \
+								config/ServerConfig.cpp \
+								network/Client.cpp \
+								network/Server.cpp \
+								network/ServerSocket.cpp \
+								network/helpers.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp
 SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))
