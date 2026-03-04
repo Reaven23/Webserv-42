@@ -149,8 +149,7 @@ void Config::parseServerBlock(const std::string& block) {
 		if (line.find("location") == 0) {
 			std::string rest = trim(line.substr(8));
 			std::string::size_type pathEnd = rest.find_first_of(" \t{");
-			std::string locPath = (pathEnd != std::string::npos)
-				? trim(rest.substr(0, pathEnd)) : rest;
+			std::string locPath = (pathEnd != std::string::npos) ? trim(rest.substr(0, pathEnd)) : rest;
 			if (locPath.empty())
 				locPath = "/";
 
