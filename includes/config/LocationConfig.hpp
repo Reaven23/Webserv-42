@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 class LocationConfig {
 public:
@@ -13,7 +14,10 @@ public:
 	const std::string& getPath() const;
 	void setPath(const std::string& path);
 
+	void addMethod(const std::string& method);
+	const std::vector<std::string>& getMethods() const;
+
 private:
 	std::string _path;  // ex. "/", "/upload", ...
-	//// methods, ... see later
+	std::vector<std::string> _methods; // "GET", "POST", "DELETE"
 };

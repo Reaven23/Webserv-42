@@ -11,7 +11,14 @@ ServerConfig::~ServerConfig(void) {};
 
 // Setters
 
-void ServerConfig::setListen(const std::string& host, int port) { _host = host; _port = port; };
+void ServerConfig::setHost(const std::string& host) { _host = host; }
+
+void ServerConfig::setPort(int port) { _port = port; }
+
+void ServerConfig::setListen(const std::string& host, int port) {
+	_host = host;
+	_port = port;
+}
 
 void ServerConfig::setRoot(const std::string& root) { _root = root; }
 
