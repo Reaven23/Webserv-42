@@ -6,12 +6,17 @@
 #include "../includes/utils/Logger.hpp"
 #include "../includes/config/Config.hpp"
 
+
+////
+#include <iostream>
+
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
   Config config;
-  config.parse("config/default.conf");
+  std::cout << "Parsing config/test.conf" << std::endl;
+  config.parse("config/test.conf");
   config.print();
   _exit(0);////
 
