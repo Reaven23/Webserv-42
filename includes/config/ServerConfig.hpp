@@ -13,9 +13,11 @@ public:
 
 	ServerConfig& operator=(const ServerConfig& other);
 
-	// Listen
+	// Listen (host + port)
 	std::string getHost() const;
 	int getPort() const;
+	void setHost(const std::string& host);
+	void setPort(int port);
 	void setListen(const std::string& host, int port);
 
 	// Root

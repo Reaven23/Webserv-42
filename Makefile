@@ -24,6 +24,9 @@ INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
 SRCS_DIR			= srcs/
 SRCS_FILES		= main.cpp \
 								ServerSocket.cpp \
+								config/Config.cpp \
+								config/ServerConfig.cpp \
+								config/LocationConfig.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp
 SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))

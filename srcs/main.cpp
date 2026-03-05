@@ -4,10 +4,15 @@
 #include "../includes/Client.hpp"
 #include "../includes/Server.hpp"
 #include "../includes/utils/Logger.hpp"
+#include "../includes/config/Config.hpp"
 
 int main(int argc, char *argv[]) {
-  (void)argc;
-  (void)argv;
+	if (argc != 2)
+		return (1);
+	
+	Config config;
+  	config.parse(argv[1]);
+  	////config.print();
 
   Server server(8080);
 
