@@ -6,19 +6,13 @@
 #include "../includes/utils/Logger.hpp"
 #include "../includes/config/Config.hpp"
 
-
-////
-#include <iostream>
-
 int main(int argc, char *argv[]) {
-  (void)argc;
-  (void)argv;
-
-  Config config;
-  std::cout << "Parsing config/test.conf" << std::endl;
-  config.parse("config/test.conf");
-  config.print();
-  _exit(0);////
+	if (argc != 2)
+		return (1);
+	
+	Config config;
+  	config.parse(argv[1]);
+  	////config.print();
 
   Server server(8080);
 

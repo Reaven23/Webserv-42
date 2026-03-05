@@ -3,7 +3,7 @@
 #include <sstream>
 #include <cstdlib>
 
-////
+//// temp (debug)
 #include <iostream>
 
 // Constructors
@@ -11,6 +11,7 @@
 Config::Config(void) : _servers() {}
 
 Config::~Config(void) {}
+
 
 // Helpers functions
 
@@ -82,7 +83,9 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 				if (end == std::string::npos)
 					end = rest.length();
 				std::string method = trim(rest.substr(start, end - start));
-				std::cout << "method: " << method << std::endl;
+
+				////std::cout << "method: " << method << std::endl;
+				
 				if (!method.empty())
 					loc.addMethod(method);
 				start = (end == rest.length()) ? end : end + 1;
@@ -147,9 +150,17 @@ void Config::parseServerBlock(const std::string& block) {
 
 		// location /path { ... }
 		if (line.find("location") == 0) {
+			////std::cout << "location" << std::endl;
+
 			std::string rest = trim(line.substr(8));
 			std::string::size_type pathEnd = rest.find_first_of(" \t{");
 			std::string locPath = (pathEnd != std::string::npos) ? trim(rest.substr(0, pathEnd)) : rest;
+
+			/*std::cout << "line :" << line << std::endl;////
+			std::cout << "rest :" << rest << std::endl;
+			std::cout << "pathEnd :" << pathEnd << std::endl;
+			std::cout << "locPath :" << locPath << std::endl;*/
+
 			if (locPath.empty())
 				locPath = "/";
 
@@ -177,7 +188,7 @@ void Config::parse(const std::string& path) {
 	if (content.empty())
 		return;
 
-	std::cout << "content: " << content << std::endl;
+	////std::cout << "content: " << content << std::endl;
 
 	std::string::size_type pos = 0;
 	while (pos < content.length()) {
@@ -194,7 +205,7 @@ void Config::parse(const std::string& path) {
 		std::string block = extractBlock(content, pos);
 		if (!block.empty())
 		{
-			std::cout << "block: " << block << std::endl;
+			////std::cout << "block: " << block << std::endl;
 			parseServerBlock(block);
 		}
 	}
@@ -205,15 +216,17 @@ void Config::parse(const std::string& path) {
 
 const std::vector<ServerConfig>& Config::getServers() const { return (_servers); }
 
-//// Print config
+//// Print config, temp (debug)
 void Config::print() const {
 	for (std::vector<ServerConfig>::size_type i = 0; i < _servers.size(); ++i) {
 		const ServerConfig& s = _servers[i];
+
 		std::cout << "--- server " << (i + 1) << " ---" << std::endl;
 		std::cout << "  host: " << s.getHost() << std::endl;
 		std::cout << "  port: " << s.getPort() << std::endl;
 		std::cout << "  root: " << s.getRoot() << std::endl;
 		std::cout << "  index: " << s.getIndex() << std::endl;
+		
 		const std::vector<LocationConfig>& locs = s.getLocations();
 		for (std::vector<LocationConfig>::size_type j = 0; j < locs.size(); ++j) {
 			const LocationConfig& loc = locs[j];
