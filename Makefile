@@ -24,14 +24,19 @@ INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
 SRCS_DIR			= srcs/
 SRCS_FILES		= main.cpp \
 								ServerSocket.cpp \
+								http/DeleteHttpHandler.cpp \
+								http/GetHttpHandler.cpp \
+								http/HttpHandlerFactory.cpp \
+								http/HttpResponse.cpp \
 								http/HttpRequestParser.cpp \
+								http/PostHttpHandler.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp
 SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 
 # Objects
 OBJS_DIR			= objs/
-OBJS_FILES		= $(SRCS_MAIN:.cpp=.o) $(SRCS_FILES:.cpp=.o)
+OBJS_FILES		= $(SRCS_FILES:.cpp=.o)
 OBJS					= $(addprefix $(OBJS_DIR), $(OBJS_FILES))
 
 all: $(OBJS_DIR) ${NAME}
