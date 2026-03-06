@@ -16,7 +16,7 @@ class Config {
     void parse(const std::string& path);
 
     // ex: const std::vector<ServerConfig>& servers = config.getServers()
-    std::vector<ServerConfig>& getServers();
+    std::vector<ServerConfig> const& getServers() const;
 
     // Affiche toute la config (serveurs + locations) sur stdout
     void print() const;
