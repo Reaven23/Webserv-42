@@ -31,7 +31,8 @@ SRCS_FILES		= main.cpp \
 								network/ServerSocket.cpp \
 								network/helpers.cpp \
 								utils/Logger.cpp \
-								utils/Time.cpp
+								utils/Time.cpp \
+								Webserv.cpp
 SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 
 # Objects

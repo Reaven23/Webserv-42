@@ -13,9 +13,13 @@ class Server {
     // Default constructor is private as it makes no sense to have a server
     // without a config
     Server();
-    ServerSocket _socket;
 
     // Attributes
+    std::string _name;
+
+    int _epollFd;
+
+    ServerSocket _socket;
 
     std::map<int, Client*> _clients;
 
@@ -25,14 +29,14 @@ class Server {
 
     void _clear();
 
-    void _handleNewClient(int epollFd);
+    void _handleNewClient();
 
-    void _startEventLoop(int epollFd);
+    void _startEventLoop();
 
    public:
     // Constructors
 
-    Server(ServerConfig& config);
+    Server(int epollFd, ServerConfig const& config);
 
     // Destructor
 
@@ -40,7 +44,12 @@ class Server {
 
     // Getters
 
+    std::string const& getName();
+
+    int getEpollFd() const;
+
     ServerSocket const& getSocket();
+
     int getFd() const;
 
     // Methods

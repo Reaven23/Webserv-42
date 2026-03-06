@@ -16,12 +16,9 @@ using namespace std;
 
 // Constructors
 
-Server::Server(ServerConfig &config) : _socket(config.getPort()), _clients() {
-    stringstream ss;
-
-    ss << _socket.getPort();
-    Logger::info(string("Server listening on port ") + ss.str());
-};
+// TODO: passer 'server_name' depuis la config pour _name
+Server::Server(int epollFd, ServerConfig const &config)
+    : _name(""), _epollFd(epollFd), _socket(config.getPort()), _clients(){};
 
 // Destructor
 
@@ -29,13 +26,17 @@ Server::~Server(){};
 
 // Getters
 
+string const &Server::getName() { return (_name); };
+
+int Server::getEpollFd() const { return (_epollFd); };
+
 ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
 // Private methods
 
-void Server::_handleNewClient(int epollFd) {
+void Server::_handleNewClient() {
     int serverFd = getFd();
 
     Client *client = new Client();
@@ -72,7 +73,7 @@ void Server::_handleNewClient(int epollFd) {
     clientEvent.events = EPOLLIN;
     clientEvent.data.fd = clientFd;
 
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
+    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
         Logger::error(string("epollAddClient() (client): ") + strerror(errno));
         close(clientFd);
     }
@@ -102,13 +103,13 @@ void Server::_clear() {
     _clients.clear();
 };
 
-void Server::_startEventLoop(int epollFd) {
+void Server::_startEventLoop() {
     int serverFd = getFd();
 
     epoll_event eventQueue[MAX_EVENTS];
 
     while (true) {
-        int nbEvents = epoll_wait(epollFd, eventQueue, MAX_EVENTS, -1);
+        int nbEvents = epoll_wait(_epollFd, eventQueue, MAX_EVENTS, -1);
         if (nbEvents == -1) {
             Logger::error(string("epollWait(): ") + strerror(errno));
             break;
@@ -117,7 +118,7 @@ void Server::_startEventLoop(int epollFd) {
         // Loop through events
         for (int i = 0; i < nbEvents; i++) {
             if (eventQueue[i].data.fd == serverFd)  // New connection
-                _handleNewClient(epollFd);
+                _handleNewClient();
             else {  // Data from existing client
                 Client *client = _clients[eventQueue[i].data.fd];
 
@@ -142,24 +143,24 @@ void Server::_startEventLoop(int epollFd) {
 // Public methods
 
 void Server::run() {
-    // This part may throw (fatal errors only)
-    int epollFd = epoll_create(1);
-    if (epollFd == -1) {
-        throw runtime_error(string("epollCreate(): Fatal error: ") +
-                            strerror(errno));
-    }
-
     int serverFd = getFd();
 
     epoll_event serverEvent = {};
     serverEvent.events = EPOLLIN;  // Watch read events
     serverEvent.data.fd = serverFd;
 
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
+    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
         throw runtime_error(string("epollAddServer() (server): Fatal error ") +
                             strerror(errno));
     }
 
-    // This part only logs errors
-    _startEventLoop(epollFd);
+    stringstream ss;
+
+    ss << "Server ";
+    _name.empty() ? ss << "'No name'" : ss << "'" << _name << "'";
+    ss << " listening on port ";
+    ss << _socket.getPort();
+    Logger::info(ss.str());
+
+    _startEventLoop();
 }

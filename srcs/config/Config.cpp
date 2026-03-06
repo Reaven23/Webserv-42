@@ -204,7 +204,9 @@ void Config::parse(const std::string& path) {
 
 // Getter
 
-std::vector<ServerConfig>& Config::getServers() { return (_servers); }
+std::vector<ServerConfig> const& Config::getServers() const {
+    return (_servers);
+}
 
 //// Print config, temp (debug)
 void Config::print() const {
