@@ -32,6 +32,7 @@ SRCS_FILES		= main.cpp \
 								network/helpers.cpp \
 								http/DeleteHttpHandler.cpp \
 								http/GetHttpHandler.cpp \
+								http/HttpHandlerFactory.cpp \
 								http/HttpResponse.cpp \
 								http/HttpRequest.cpp \
 								http/PostHttpHandler.cpp \

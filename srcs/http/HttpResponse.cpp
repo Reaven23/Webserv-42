@@ -44,7 +44,7 @@ HttpResponse& HttpResponse::setBody(std::string const& bodyContent) {
     body = bodyContent;
 
     return (*this);
-};
+}
 
 static HttpResponse _methodNotAllowedResponse() {
     HttpResponse response(405, "Method Not Allowed");
