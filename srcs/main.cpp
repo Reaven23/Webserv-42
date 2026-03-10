@@ -1,11 +1,12 @@
 #include <exception>
 
+#include "../includes/Webserv.hpp"
 #include "../includes/config/Config.hpp"
-#include "../includes/network/Server.hpp"
 #include "../includes/utils/Logger.hpp"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
+        Logger::error("Error: invalid number of arguments");
         return (1);
     }
 
@@ -14,9 +15,9 @@ int main(int argc, char* argv[]) {
     config.parse(argv[1]);
 
     try {
-        Server server(config.getServers()[0]);
+        Webserv webserv(config);
 
-        server.run();
+        webserv.start();
     } catch (std::exception& e) {
         Logger::error(e.what());
     }
