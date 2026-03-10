@@ -2,12 +2,15 @@
 
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <cerrno>
 #include <cstring>
 #include <sstream>
 
+#include "../../includes/http/HttpRequest.hpp"
+#include "../../includes/http/HttpResponse.hpp"
 #include "../../includes/network/Client.hpp"
 #include "../../includes/network/helpers.hpp"
 #include "../../includes/utils/Logger.hpp"
@@ -124,17 +127,32 @@ void Server::_startEventLoop() {
 
                 client->read();
 
-                /* if (client->isRequestComplete()) {
-                  // TODO: traiter la requete (a voir avec Adrien)
-                  // HttpRequest request;
-                  // request.parse(client->getBuffer());
-                  // if (request.getMethod() === GET)
-                  //  ....
+                string &buffer = client->getBuffer();
+                ParsedRequest parsed = HttpRequest::parse(buffer);
 
-                  _remove(client->getFd());
+                if (parsed.status == PARSE_INCOMPLETE) continue;
 
-                  delete client;
-                } */
+                HttpResponse response;
+                if (parsed.status == PARSE_ERROR) {
+                    response.setStatus(400, "Bad Request");
+                    response.body = "Bad Request";
+                    response.setHeader("Content-Type", "text/plain");
+
+                    ostringstream cl;
+                    cl << response.body.size();
+                    response.setHeader("Content-Length", cl.str());
+                    response.setHeader("Connection", "close");
+                } else {
+                    response = HttpResponse::handleRequest(parsed.request);
+                    response.setHeader("Connection", "close");
+                }
+
+                string raw = response.toString();
+                if (!raw.empty()) {
+                    ssize_t sent =
+                        send(client->getFd(), raw.c_str(), raw.size(), 0);
+                    (void)sent;
+                }
             }
         }
     }

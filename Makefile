@@ -30,6 +30,11 @@ SRCS_FILES		= main.cpp \
 								network/Server.cpp \
 								network/ServerSocket.cpp \
 								network/helpers.cpp \
+								http/DeleteHttpHandler.cpp \
+								http/GetHttpHandler.cpp \
+								http/HttpResponse.cpp \
+								http/HttpRequest.cpp \
+								http/PostHttpHandler.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp \
 								Webserv.cpp
@@ -37,7 +42,7 @@ SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 
 # Objects
 OBJS_DIR			= objs/
-OBJS_FILES		= $(SRCS_MAIN:.cpp=.o) $(SRCS_FILES:.cpp=.o)
+OBJS_FILES		= $(SRCS_FILES:.cpp=.o)
 OBJS					= $(addprefix $(OBJS_DIR), $(OBJS_FILES))
 
 all: $(OBJS_DIR) ${NAME}
