@@ -1,8 +1,8 @@
 #pragma once
 
-#include "http/IHttpHandler.hpp"
+#include "./IHttpHandler.hpp"
 
 class GetHttpHandler : public IHttpHandler {
- public:
-  virtual HttpResponse handle(const HttpRequest& request) const;
+   public:
+    virtual HttpResponse handle(const HttpRequest& request) const;
 };

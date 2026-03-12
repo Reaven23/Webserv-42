@@ -6,20 +6,20 @@
 class HttpRequest;
 
 class HttpResponse {
- public:
-  int statusCode;
-  std::string reasonPhrase;
-  std::map<std::string, std::string> headers;
-  std::string body;
+   public:
+    int                                statusCode;
+    std::string                        reasonPhrase;
+    std::map<std::string, std::string> headers;
+    std::string                        body;
 
-  HttpResponse();
-  HttpResponse(int statusCode, const std::string& reasonPhrase);
+    HttpResponse();
+    HttpResponse(int statusCode, const std::string& reasonPhrase);
 
-  void setHeader(const std::string& name, const std::string& value);
-  std::string toString() const;
+    std::string toString() const;
 
-  void setStatus(int code, const std::string& reason);
+    HttpResponse& setHeader(const std::string& name, const std::string& value);
+    HttpResponse& setStatus(int code, const std::string& reason);
+    HttpResponse& setBody(std::string const& body);
 
-
-  static HttpResponse handleRequest(const HttpRequest& request);
+    static HttpResponse handleRequest(const HttpRequest& request);
 };

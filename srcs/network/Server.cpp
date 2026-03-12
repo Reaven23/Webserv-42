@@ -7,10 +7,9 @@
 
 #include <cerrno>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 
-#include "../../includes/http/HttpRequest.hpp"
-#include "../../includes/http/HttpResponse.hpp"
 #include "../../includes/network/Client.hpp"
 #include "../../includes/network/helpers.hpp"
 #include "../../includes/utils/Logger.hpp"
@@ -77,14 +76,14 @@ void Server::_handleNewClient() {
     clientEvent.data.fd = clientFd;
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
-        Logger::error(string("epollAddClient() (client): ") + strerror(errno));
+        Logger::error(string("epoll_ctl() (client): ") + strerror(errno));
         close(clientFd);
     }
 
     _clients[clientFd] = client;
 };
 
-void Server::_erase(int clientFd) {
+void Server::_remove(int clientFd) {
     map<int, Client *>::const_iterator it = _clients.find(clientFd);
 
     if (it != _clients.end() && it->second) {
@@ -107,8 +106,6 @@ void Server::_clear() {
 };
 
 void Server::_startEventLoop() {
-    int serverFd = getFd();
-
     epoll_event eventQueue[MAX_EVENTS];
 
     while (true) {
@@ -120,38 +117,53 @@ void Server::_startEventLoop() {
 
         // Loop through events
         for (int i = 0; i < nbEvents; i++) {
-            if (eventQueue[i].data.fd == serverFd)  // New connection
-                _handleNewClient();
-            else {  // Data from existing client
-                Client *client = _clients[eventQueue[i].data.fd];
+            int      fd = eventQueue[i].data.fd;
+            uint32_t events = eventQueue[i].events;
 
-                client->read();
+            // New connection
+            if (fd == _socket.getFd()) _handleNewClient();
+            // Data from existing client, request incomplete
+            else if (events & EPOLLIN) {
+                Client *client = _clients[fd];
 
-                string &buffer = client->getBuffer();
-                ParsedRequest parsed = HttpRequest::parse(buffer);
+                if (client->read() <= 0) continue;
 
-                if (parsed.status == PARSE_INCOMPLETE) continue;
+                client->parse();
 
-                HttpResponse response;
-                if (parsed.status == PARSE_ERROR) {
-                    response.setStatus(400, "Bad Request");
-                    response.body = "Bad Request";
-                    response.setHeader("Content-Type", "text/plain");
+                if (client->isRequestComplete() || client->isRequestError()) {
+                    epoll_event ev = {};
+                    ev.events = EPOLLOUT;
+                    ev.data.fd = fd;
 
-                    ostringstream cl;
-                    cl << response.body.size();
-                    response.setHeader("Content-Length", cl.str());
-                    response.setHeader("Connection", "close");
-                } else {
-                    response = HttpResponse::handleRequest(parsed.request);
-                    response.setHeader("Connection", "close");
+                    if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fd, &ev) == -1) {
+                        Logger::error(string("epoll_ctl() (client): Failed to "
+                                             "add flag EPOLLOUT ") +
+                                      strerror(errno));
+                    }
                 }
+                // Data from existing client, response incomplete
+            } else if (events & EPOLLOUT) {
+                Client *client = _clients[fd];
 
-                string raw = response.toString();
-                if (!raw.empty()) {
-                    ssize_t sent =
-                        send(client->getFd(), raw.c_str(), raw.size(), 0);
-                    (void)sent;
+                client->isRequestComplete() ? client->setResponse()
+                                            : client->setErrorResponse();
+
+                if (client->send() == -1) continue;
+
+                if (client->isResponseComplete()) {
+                    // TODO:: if keep-alive
+                    // client->reset();
+                    // epoll_event ev = {};
+                    // ev.events = EPOLLIN;
+                    // ev.data.fd = fd;
+                    // if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fd, &ev) ==
+                    // -1) {
+                    //    Logger::error(string("epoll_ctl() (client):
+                    //    Failed to " "add flag EPOLLOUT ") +
+                    //    strerror(errno));
+                    // }
+                    // else {}
+                    _remove(fd);
                 }
             }
         }
