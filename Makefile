@@ -71,6 +71,11 @@ fclean: clean
 	@echo $(GREEN) " $(NAME) deleted" $(RESET)
 	@echo $(GREEN) "full clean done" $(RESET)
 
+tests:
+	@echo "Starting tests suite..."
+	@node sandbox/e2e/index.js
+	@echo "\n...all tests done."
+
 
 re:	fclean all
 
