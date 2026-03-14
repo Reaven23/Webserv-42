@@ -9,39 +9,44 @@
 #include <cstring>
 #include <string>
 
+#include "../../includes/http/HttpRequest.hpp"
+#include "../../includes/http/HttpResponse.hpp"
+
 class Client {
- private:
-  Client(Client const& other);
-  Client& operator=(Client const& other);
+   private:
+    Client(Client const& other);
+    Client& operator=(Client const& other);
 
-  // Attributes
+    // Attributes
+    int               _fd;
+    sockaddr_in       _addr;
+    std::string       _buffer;
+    ParsedHttpRequest _request;
+    HttpResponse      _response;
 
-  int _fd;
-  sockaddr_in _addr;
-  std::string _buffer;
+   public:
+    // Constructors
+    Client();
 
-  // Methods
+    // Destructor
+    ~Client();
 
-  bool _isRequestComplete() const { return (true); };
+    // Getters
+    int                      getFd() const;
+    std::string&             getBuffer();
+    std::string              getIp() const;
+    ParsedHttpRequest const& getRequest();
 
- public:
-  // Constructors
+    // Setters
+    void setResponse();
+    void setErrorResponse();
 
-  Client();
-
-  // Destructor
-
-  ~Client();
-
-  // Getters
-
-  int getFd() const;
-  std::string& getBuffer();
-  std::string getIp() const;
-
-  // Methods
-
-  void accept(int serverFd);
-
-  void read();
+    // Methods
+    void    accept(int serverFd);
+    ssize_t read();
+    void    parse();
+    ssize_t send();
+    bool    isRequestComplete() const;
+    bool    isRequestError() const;
+    bool    isResponseComplete() const;
 };

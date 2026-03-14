@@ -25,7 +25,7 @@ class Server {
 
     // Methods
 
-    void _erase(int clientFd);
+    void _remove(int clientFd);
 
     void _clear();
 
