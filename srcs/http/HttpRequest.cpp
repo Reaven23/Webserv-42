@@ -33,14 +33,14 @@ std::string HttpRequest::_toLower(const std::string& s) {
 }
 
 void HttpRequest::_splitUriAndQuery(const std::string& full, std::string& uri,
-                                    std::string& queryString) {
+                                    std::string& query_string) {
     size_t pos = full.find('?');
     if (pos == std::string::npos) {
         uri = full;
-        queryString = "";
+        query_string = "";
     } else {
         uri = full.substr(0, pos);
-        queryString = full.substr(pos + 1);
+        query_string = full.substr(pos + 1);
     }
 }
 
@@ -55,7 +55,7 @@ bool HttpRequest::_parseHeaders(const std::string& buffer, size_t headers_start,
         if (line_end == std::string::npos) line_end = headers_section.length();
 
         std::string line = headers_section.substr(pos, line_end - pos);
-        size_t colon = line.find(':');
+        size_t      colon = line.find(':');
         if (line.empty()) {
             if (line_end >= headers_section.length()) break;
             pos = line_end + 2;
@@ -78,7 +78,7 @@ bool HttpRequest::_parseContentLength(const std::string& value, size_t& out) {
     std::string v = _trim(value);
     if (v.empty()) return false;
 
-    size_t n = 0;
+    size_t             n = 0;
     std::istringstream iss(v);
     iss >> n;
     if (!iss || !iss.eof()) return false;
@@ -89,7 +89,7 @@ bool HttpRequest::_parseContentLength(const std::string& value, size_t& out) {
 bool HttpRequest::_hasToken(const std::string& csvValue,
                             const std::string& token) {
     std::string lower = _toLower(csvValue);
-    size_t start = 0;
+    size_t      start = 0;
     while (start < lower.length()) {
         size_t comma = lower.find(',', start);
         if (comma == std::string::npos) comma = lower.length();
@@ -101,9 +101,9 @@ bool HttpRequest::_hasToken(const std::string& csvValue,
 }
 
 ParseStatus HttpRequest::_parseChunkedBody(const std::string& buffer,
-                                           size_t body_start,
-                                           std::string& outBody,
-                                           size_t& outConsumed) {
+                                           size_t             body_start,
+                                           std::string&       outBody,
+                                           size_t&            outConsumed) {
     outBody.clear();
     outConsumed = 0;
     size_t pos = body_start;
@@ -113,14 +113,14 @@ ParseStatus HttpRequest::_parseChunkedBody(const std::string& buffer,
         if (line_end == std::string::npos) return INCOMPLETE;
 
         std::string size_line = _trim(buffer.substr(pos, line_end - pos));
-        size_t semi = size_line.find(';');
+        size_t      semi = size_line.find(';');
         if (semi != std::string::npos) size_line = size_line.substr(0, semi);
         size_line = _trim(size_line);
         if (size_line.empty()) return ERROR;
 
         size_t chunk_size = 0;
         for (size_t i = 0; i < size_line.length(); ++i) {
-            char c = size_line[i];
+            char   c = size_line[i];
             size_t d = 0;
             if (c >= '0' && c <= '9')
                 d = static_cast<size_t>(c - '0');
@@ -173,7 +173,7 @@ ParsedHttpRequest HttpRequest::parse(const std::string& buffer) {
     std::string request_line = buffer.substr(0, line_end);
 
     std::istringstream iss(request_line);
-    std::string method_str, uri_full, version;
+    std::string        method_str, uri_full, version;
     iss >> method_str >> uri_full >> version;
     std::string extra;
     iss >> extra;
@@ -222,7 +222,7 @@ ParsedHttpRequest HttpRequest::parse(const std::string& buffer) {
             return result;
         }
         std::string unchunked;
-        size_t consumed = 0;
+        size_t      consumed = 0;
         ParseStatus s =
             _parseChunkedBody(buffer, body_start, unchunked, consumed);
         if (s != OK) {
@@ -235,7 +235,7 @@ ParsedHttpRequest HttpRequest::parse(const std::string& buffer) {
         return result;
     }
 
-    size_t content_length = 0;
+    size_t                                             content_length = 0;
     std::map<std::string, std::string>::const_iterator clIt =
         result.request.headers.find("content-length");
     if (clIt != result.request.headers.end()) {
