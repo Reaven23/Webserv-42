@@ -2,6 +2,6 @@
 /objs
 webserv
 *.txt
-sandbox/**/*.o
+**/*.o
 sandbox/**/parse_test
 sandbox/**/http_flow_test

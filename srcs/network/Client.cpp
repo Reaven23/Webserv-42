@@ -1,5 +1,8 @@
 #include "../../includes/network/Client.hpp"
 
+#include <sys/types.h>
+
+#include <iostream>
 #include <sstream>
 
 #include "../../includes/utils/Logger.hpp"
@@ -7,59 +10,132 @@
 using namespace std;
 
 // Constructors
-
-Client::Client() : _fd(-1), _addr(){};
+Client::Client() : _fd(-1){};
 
 // Destructor
-
 Client::~Client() { close(_fd); };
 
 // Getters
-
 int Client::getFd() const { return (_fd); };
 
 string& Client::getBuffer() { return (_buffer); };
 
 string Client::getIp() const {
-  unsigned char* ip = (unsigned char*)&_addr.sin_addr.s_addr;
+    unsigned char* ip = (unsigned char*)&_addr.sin_addr.s_addr;
 
-  stringstream ss;
-  ss << (int)ip[0] << "." << (int)ip[1] << "." << (int)ip[2] << "."
-     << (int)ip[3];
+    stringstream ss;
+    ss << (int)ip[0] << "." << (int)ip[1] << "." << (int)ip[2] << "."
+       << (int)ip[3];
 
-  return (string(ss.str()));
+    return (string(ss.str()));
 };
 
-// Methods
+ParsedHttpRequest const& Client::getRequest() { return (_request); };
 
+// Setters
+void Client::setResponse() {
+    _response = HttpResponse::handleRequest(_request.request);
+    // TODO: doublon avec HttpHandler.handle() ?
+    _response.setHeader("Connection", "close");
+};
+
+void Client::setErrorResponse() {
+    ostringstream cl;
+    cl << _response.body.size();
+
+    _response.setStatus(400, "Bad Request")
+        .setHeader("Content-Type", "text/plain")
+        .setHeader("Content-Length", cl.str())
+        .setHeader("Connection", "close")
+        .setBody("Bad request");
+};
+
+// Public methods
 void Client::accept(int serverFd) {
-  socklen_t addrLen = sizeof(_addr);
+    socklen_t addrLen = sizeof(_addr);
 
-  _fd = ::accept(serverFd, (struct sockaddr*)&_addr, &addrLen);
+    _fd = ::accept(serverFd, (struct sockaddr*)&_addr, &addrLen);
 }
 
-void Client::read() {
-  Logger::info(string("Request from client ") + getIp());
+ssize_t Client::read() {
+    Logger::info(string("Request from client ") + getIp());
 
-  // Temp buffer to store the received data.
-  char tmp[1024] = {0};
-  size_t bytes = recv(_fd, tmp, sizeof(tmp), 0);
+    // Temp buffer to store the received data.
+    char    tmp[1024] = {0};
+    ssize_t bytes = recv(_fd, tmp, sizeof(tmp), 0);
 
-  // recv() reads data sent by the client through the connection.
-  //   - clientSocket   : the client fd (returned by accept, NOT the listening
-  //   socket!)
-  //   - buffer         : where to store the received bytes
-  //   - sizeof(buffer) : max number of bytes to read (to avoid buffer
-  //   overflow)
-  //   - 0              : no flags (default behavior, blocking)
-  // Returns the number of bytes read, 0 if the client disconnected, -1 on
-  // error
-  if (bytes > 0) {
-    _buffer.append(tmp, bytes);
-  } else if (bytes == 0) {  // client has ended the connection
-    close(_fd);  // automatically removes the fd from the epoll interest list;
-  } else {
-    Logger::error(string("recv(): Failed to read data: ") + strerror(errno));
-    close(_fd);
-  }
+    // recv() reads data sent by the client through the connection.
+    //   - clientSocket   : the client fd (returned by accept, NOT the listening
+    //   socket!)
+    //   - buffer         : where to store the received bytes
+    //   - sizeof(buffer) : max number of bytes to read (to avoid buffer
+    //   overflow)
+    //   - 0              : no flags (default behavior, blocking)
+    // Returns the number of bytes read, 0 if the client disconnected, -1 on
+    // error
+    if (bytes > 0) {
+        _buffer.append(tmp, bytes);
+    } else if (bytes == 0) {  // client has ended the connection
+        ostringstream os;
+
+        os << "Client '" << _fd << "|" << getIp()
+           << "' has ended the connection" << endl;
+        Logger::info(os.str());
+
+        close(_fd);  // automatically removes the fd from epoll interest list;
+
+    } else {
+        ostringstream os;
+
+        os << "recv(): Failed to read data from client '" << _fd << "|"
+           << getIp() << "'";
+        os << strerror(errno);
+
+        Logger::error(os.str());
+        close(_fd);
+    }
+
+    return (bytes);
 }
+
+void Client::parse() { _request = HttpRequest::parse(_buffer); }
+
+ssize_t Client::send() {
+    ostringstream os;
+    string        raw = _response.toString();
+
+    if (raw.empty()) {
+        os << "send(): Failed to send data to client '" << _fd << "|" << getIp()
+           << "'" << endl;
+        os << strerror(errno);
+
+        Logger::error(os.str());
+
+        return (-1);
+    }
+
+    ssize_t bytes = ::send(_fd, raw.c_str(), raw.size(), 0);
+
+    if (bytes == -1) {
+        os << "send(): Failed to send data to client '" << _fd << "|" << getIp()
+           << "'" << endl;
+        os << strerror(errno);
+
+        Logger::error(os.str());
+
+        return (-1);
+    }
+
+    os << "Sent " << raw.size() << " bytes to client '" << _fd << "|" << getIp()
+       << "'" << endl;
+
+    Logger::info(os.str());
+
+    return (bytes);
+}
+
+bool Client::isRequestComplete() const { return (_request.status == OK); };
+
+bool Client::isRequestError() const { return (_request.status == ERROR); };
+
+bool Client::isResponseComplete() const { return (true); };
