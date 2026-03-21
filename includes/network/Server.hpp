@@ -29,7 +29,13 @@ class Server {
 
     void _clear();
 
+    void _closeIdleConnections();
+
     void _handleNewClient();
+
+    void _handleRequest(int clientFd);
+
+    void _handleResponse(int clientFd);
 
     void _startEventLoop();
 

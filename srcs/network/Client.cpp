@@ -10,7 +10,7 @@
 using namespace std;
 
 // Constructors
-Client::Client() : _fd(-1){};
+Client::Client() : _fd(-1), _lastActivity(time(NULL)){};
 
 // Destructor
 Client::~Client() { close(_fd); };
@@ -32,6 +32,8 @@ string Client::getIp() const {
 
 ParsedHttpRequest const& Client::getRequest() { return (_request); };
 
+time_t Client::getLastActivity() const { return (_lastActivity); };
+
 // Setters
 void Client::setResponse() {
     _response = HttpResponse::handleRequest(_request.request);
@@ -49,6 +51,8 @@ void Client::setErrorResponse() {
         .setHeader("Connection", "close")
         .setBody("Bad request");
 };
+
+void Client::setLastActivity() { _lastActivity = time(NULL); };
 
 // Public methods
 void Client::accept(int serverFd) {
@@ -95,6 +99,8 @@ ssize_t Client::read() {
         close(_fd);
     }
 
+    setLastActivity();
+
     return (bytes);
 }
 
@@ -131,11 +137,33 @@ ssize_t Client::send() {
 
     Logger::info(os.str());
 
+    setLastActivity();
+
     return (bytes);
 }
+
+void Client::reset() {
+    _buffer.erase(0, _request.consumed);
+
+    _request.consumed = 0;
+    _request.status = INCOMPLETE;
+    _request.request = HttpRequest();
+
+    _response = HttpResponse();
+};
 
 bool Client::isRequestComplete() const { return (_request.status == OK); };
 
 bool Client::isRequestError() const { return (_request.status == ERROR); };
 
 bool Client::isResponseComplete() const { return (true); };
+
+bool Client::isKeepAlive() const {
+    map<string, string>                 headers = _request.request.headers;
+    map<string, string>::const_iterator it;
+
+    it = headers.find("keep-alive");
+    if (it != headers.end()) return (true);
+
+    return (false);
+}
