@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "../../includes/Webserv.hpp"
 #include "../../includes/network/Client.hpp"
 #include "../../includes/network/helpers.hpp"
 #include "../../includes/utils/Logger.hpp"
@@ -17,17 +18,14 @@
 using namespace std;
 
 // Constructors
-
 // TODO: passer 'server_name' depuis la config pour _name
 Server::Server(int epollFd, ServerConfig const &config)
     : _name(""), _epollFd(epollFd), _socket(config.getPort()), _clients(){};
 
 // Destructor
-
 Server::~Server(){};
 
 // Getters
-
 string const &Server::getName() { return (_name); };
 
 int Server::getEpollFd() const { return (_epollFd); };
@@ -37,6 +35,40 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 int Server::getFd() const { return (_socket.getFd()); };
 
 // Private methods
+void Server::_remove(int clientFd) {
+    map<int, Client *>::const_iterator it = _clients.find(clientFd);
+
+    if (it != _clients.end() && it->second) {
+        delete it->second;
+
+        _clients.erase(it->first);
+    }
+}
+
+void Server::_clear() {
+    map<int, Client *>::const_iterator it;
+
+    for (it = _clients.begin(); it != _clients.end(); it++) {
+        if (it->second) {
+            delete it->second;
+        }
+    }
+
+    _clients.clear();
+};
+
+void Server::_closeIdleConnections() {
+    time_t                             now = time(NULL);
+    map<int, Client *>::const_iterator it = _clients.begin();
+    while (it != _clients.end()) {
+        if (now - it->second->getLastActivity() > KEEP_ALIVE_TIMEOUT) {
+            int fd = it->first;
+            it++;
+            _remove(fd);
+        } else
+            it++;
+    }
+};
 
 void Server::_handleNewClient() {
     int serverFd = getFd();
@@ -83,95 +115,82 @@ void Server::_handleNewClient() {
     _clients[clientFd] = client;
 };
 
-void Server::_remove(int clientFd) {
-    map<int, Client *>::const_iterator it = _clients.find(clientFd);
+void Server::_handleRequest(int clientFd) {
+    Client *client = _clients[clientFd];
 
-    if (it != _clients.end() && it->second) {
-        delete it->second;
+    if (client->read() <= 0) return;
 
-        _clients.erase(it->first);
-    }
-}
+    client->parse();
 
-void Server::_clear() {
-    map<int, Client *>::const_iterator it;
+    if (client->isRequestComplete() || client->isRequestError()) {
+        epoll_event ev = {};
+        ev.events = EPOLLOUT;
+        ev.data.fd = clientFd;
 
-    for (it = _clients.begin(); it != _clients.end(); it++) {
-        if (it->second) {
-            delete it->second;
+        if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, clientFd, &ev) == -1) {
+            Logger::error(string("epoll_ctl() (client): Failed to "
+                                 "add flag EPOLLOUT ") +
+                          strerror(errno));
         }
     }
+};
 
-    _clients.clear();
+void Server::_handleResponse(int clientFd) {
+    Client *client = _clients[clientFd];
+
+    client->isRequestComplete() ? client->setResponse()
+                                : client->setErrorResponse();
+
+    if (client->send() == -1) return;
+
+    if (client->isResponseComplete()) {
+        if (client->isKeepAlive()) {
+            client->reset();
+            client->setLastActivity();
+
+            epoll_event ev = {};
+            ev.events = EPOLLIN;
+            ev.data.fd = clientFd;
+
+            if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, clientFd, &ev) == -1) {
+                Logger::error(string("epoll_ctl() (client): Failed to "
+                                     "add flag EPOLLIN") +
+                              strerror(errno));
+            }
+        } else
+            _remove(clientFd);
+    }
 };
 
 void Server::_startEventLoop() {
     epoll_event eventQueue[MAX_EVENTS];
 
     while (true) {
-        int nbEvents = epoll_wait(_epollFd, eventQueue, MAX_EVENTS, -1);
+        int nbEvents =
+            epoll_wait(_epollFd, eventQueue, MAX_EVENTS, EPOLL_BLCK_TIME);
         if (nbEvents == -1) {
             Logger::error(string("epollWait(): ") + strerror(errno));
             break;
         }
+
+        _closeIdleConnections();
 
         // Loop through events
         for (int i = 0; i < nbEvents; i++) {
             int      fd = eventQueue[i].data.fd;
             uint32_t events = eventQueue[i].events;
 
-            // New connection
-            if (fd == _socket.getFd()) _handleNewClient();
-            // Data from existing client, request incomplete
-            else if (events & EPOLLIN) {
-                Client *client = _clients[fd];
-
-                if (client->read() <= 0) continue;
-
-                client->parse();
-
-                if (client->isRequestComplete() || client->isRequestError()) {
-                    epoll_event ev = {};
-                    ev.events = EPOLLOUT;
-                    ev.data.fd = fd;
-
-                    if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fd, &ev) == -1) {
-                        Logger::error(string("epoll_ctl() (client): Failed to "
-                                             "add flag EPOLLOUT ") +
-                                      strerror(errno));
-                    }
-                }
-                // Data from existing client, response incomplete
-            } else if (events & EPOLLOUT) {
-                Client *client = _clients[fd];
-
-                client->isRequestComplete() ? client->setResponse()
-                                            : client->setErrorResponse();
-
-                if (client->send() == -1) continue;
-
-                if (client->isResponseComplete()) {
-                    // TODO:: if keep-alive
-                    // client->reset();
-                    // epoll_event ev = {};
-                    // ev.events = EPOLLIN;
-                    // ev.data.fd = fd;
-                    // if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fd, &ev) ==
-                    // -1) {
-                    //    Logger::error(string("epoll_ctl() (client):
-                    //    Failed to " "add flag EPOLLOUT ") +
-                    //    strerror(errno));
-                    // }
-                    // else {}
-                    _remove(fd);
-                }
-            }
+            if (fd == _socket.getFd())
+                _handleNewClient();
+            else if (events & EPOLLIN)
+                _handleRequest(fd);
+            else if (events & EPOLLOUT)
+                _handleResponse(fd);
         }
     }
 }
 
 // Public methods
-
 void Server::run() {
     int serverFd = getFd();
 

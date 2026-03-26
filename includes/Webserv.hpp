@@ -3,6 +3,8 @@
 #include "config/Config.hpp"
 #include "network/Server.hpp"
 
+#define EPOLL_BLCK_TIME 1000
+
 class Webserv {
    private:
     // Default and copy constructor not needed
