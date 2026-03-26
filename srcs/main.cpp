@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 
     config.parse(argv[1]);
 
-    config.print();
+    config.print();  ////
 
     try {
         Webserv webserv(config);

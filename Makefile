@@ -72,8 +72,13 @@ fclean: clean
 	@echo $(GREEN) "full clean done" $(RESET)
 
 tests:
-	@echo "Starting tests suite..."
+	@echo "Starting tests suites..."
 	@node sandbox/e2e/index.js
+	@echo "\n...all tests done."
+
+tests-all:
+	@echo "Starting tests suites with slow (keep-alive, timeout)..."
+	@node sandbox/e2e/index.js --all
 	@echo "\n...all tests done."
 
 
