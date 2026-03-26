@@ -71,12 +71,7 @@ const testCases = [
     version: "HTTP/1.1",
     expected: {
       status: "200",
-      body: `<html>
-  <body>
-    <h1>Hello Webserv</h1>
-  </body>
-</html>
-`,
+      body: `<html>\r\n  <body>\r\n    <h1>Hello Webserv</h1>\r\n  </body>\r\n</html>\r\n`,
     },
   },
   {

@@ -25,17 +25,20 @@ function parseHeader(line) {
 }
 
 export function parseResponse(response) {
-  const lines = response.split("\r\n").filter((line) => line);
+  const separatorIndex = response.indexOf("\r\n\r\n");
+  const headPart = response.substring(0, separatorIndex);
+  const body = response.substring(separatorIndex + 4);
 
-  return lines.reduce(
-    (acc, curr, index) => {
-      if (index === 0) return { ...acc, ...parseResponseFirstLine(curr) };
+  const headlines = headPart.split("\r\n");
+  const result = {
+    ...parseResponseFirstLine(headlines[0]),
+    headers: {},
+    body,
+  };
 
-      if (curr.includes(":"))
-        return { ...acc, headers: { ...acc.headers, ...parseHeader(curr) } };
+  for (let i = 1; i < headlines.length; i++) {
+    Object.assign(result.headers, parseHeader(headlines[i]));
+  }
 
-      return { ...acc, body: acc.body + curr };
-    },
-    { body: "", headers: {} },
-  );
+  return result;
 }
