@@ -4,6 +4,8 @@
 #include "../includes/config/Config.hpp"
 #include "../includes/utils/Logger.hpp"
 
+#include <cstdio>
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         Logger::error("Error: invalid number of arguments");
@@ -13,6 +15,8 @@ int main(int argc, char* argv[]) {
     Config config;
 
     config.parse(argv[1]);
+
+	config.print();////
 
     try {
         Webserv webserv(config);
