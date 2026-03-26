@@ -7,7 +7,7 @@ class LocationConfig {
 public:
 
 	enum AutoindexState {
-		AUTOINDEX_UNSET = 0,
+		AUTOINDEX_UNSET,
 		AUTOINDEX_OFF,
 		AUTOINDEX_ON
 	};

@@ -4,6 +4,7 @@
 
 ServerConfig::ServerConfig(void)
     : _listens(),
+      _server_name(""),
       _root(""),
       _index(""),
       _client_max_body_size(1048576u),  //// 1 MB
@@ -12,6 +13,7 @@ ServerConfig::ServerConfig(void)
 
 ServerConfig::ServerConfig(const ServerConfig& other)
     : _listens(other._listens),
+      _server_name(other._server_name),
       _root(other._root),
       _index(other._index),
       _client_max_body_size(other._client_max_body_size),
@@ -28,6 +30,8 @@ void ServerConfig::addListen(const std::string& host, int port) {
     toAdd.port = port;
     _listens.push_back(toAdd);
 }
+
+void ServerConfig::setServerName(const std::string& name) { _server_name = name; }
 
 void ServerConfig::setRoot(const std::string& root) { _root = root; }
 
@@ -54,6 +58,8 @@ int ServerConfig::getPort() const {
 
 //// end TEMP
 
+const std::string& ServerConfig::getServerName() const { return _server_name; }
+
 const std::string& ServerConfig::getRoot() const { return _root; }
 
 const std::string& ServerConfig::getIndex() const { return _index; }
@@ -71,6 +77,7 @@ const std::vector<LocationConfig>& ServerConfig::getLocations() const { return _
 ServerConfig& ServerConfig::operator=(const ServerConfig& other) {
     if (this != &other) {
         _listens = other._listens;
+		_server_name = other._server_name;
         _root = other._root;
         _index = other._index;
         _client_max_body_size = other._client_max_body_size;

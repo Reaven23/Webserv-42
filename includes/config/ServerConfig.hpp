@@ -29,6 +29,10 @@ class ServerConfig {
     int getPort() const;
     //// end TEMP
 
+	// Server name
+	const std::string& getServerName() const;
+	void setServerName(const std::string& name);
+
     // Root
     const std::string& getRoot() const;
     void setRoot(const std::string& root);
@@ -51,6 +55,7 @@ class ServerConfig {
 
    private:
     std::vector<ListenEntry> _listens;
+	std::string _server_name; //ex. "nimp.com"
     std::string _root;   // ex. "./www"
     std::string _index;  // ex. "index.html"
     size_t _client_max_body_size;

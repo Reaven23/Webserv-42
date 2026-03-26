@@ -179,6 +179,12 @@ void Config::parseServerBlock(const std::string& block) {
             continue;
         }
 
+		if (line.find("server_name") == 0) {
+			std::string rest = stripDirectiveValue(line.substr(11));
+			server.setServerName(rest);
+			continue;
+		}
+
         if (line.find("client_max_body_size") == 0) {
             std::string rest = stripDirectiveValue(line.substr(20));
             if (!rest.empty()) {
@@ -292,6 +298,7 @@ void Config::print() const {
             std::cout << "  listen: " << listens[li].host << ":"
                       << listens[li].port << std::endl;
         }
+		std::cout << "  server_name: " << s.getServerName() << std::endl;
         std::cout << "  root: " << s.getRoot() << std::endl;
         std::cout << "  index: " << s.getIndex() << std::endl;
         std::cout << "  client_max_body_size: " << s.getClientMaxBodySize()
