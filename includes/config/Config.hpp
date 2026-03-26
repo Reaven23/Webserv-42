@@ -27,17 +27,18 @@ class Config {
     // read the file, return content
     static std::string readFile(const std::string& path);
 
-    // trim the string
+    // trim the string (spaces, tabs, newlines, etc)
     static std::string trim(const std::string& s);
+
+    // trim + remove trailing ';' if present
+    static std::string stripDirectiveValue(const std::string& rest);
 
     // parse a "server { ... }" block and add the result to _servers
     void parseServerBlock(const std::string& block);
 
     // parse "location /path { ... }", fill the LocationConfig
-    static void parseLocationBlock(const std::string& block,
-                                   LocationConfig& loc);
+    static void parseLocationBlock(const std::string& block, LocationConfig& loc);
 
     // find the next block delimited by { } from pos; update pos after the block
-    static std::string extractBlock(const std::string& content,
-                                    std::string::size_type& pos);
+    static std::string extractBlock(const std::string& content, std::string::size_type& pos);
 };

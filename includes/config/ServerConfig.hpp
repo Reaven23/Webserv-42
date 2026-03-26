@@ -6,6 +6,12 @@
 
 #include "LocationConfig.hpp"
 
+//// Socket bind : IP + port.
+struct ListenEntry {
+    std::string host;
+    int port;
+};
+
 class ServerConfig {
    public:
     ServerConfig(void);
@@ -14,12 +20,14 @@ class ServerConfig {
 
     ServerConfig& operator=(const ServerConfig& other);
 
-    // Listen (host + port)
+    // Listens: several `listen` lines in the same `server { }` append here.
+    const std::vector<ListenEntry>& getListens() const;
+    void addListen(const std::string& host, int port);
+
+    //// TEMP, for compile (until network uses getListens() / ListenEntry)
     std::string getHost() const;
     int getPort() const;
-    void setHost(const std::string& host);
-    void setPort(int port);
-    void setListen(const std::string& host, int port);
+    //// end TEMP
 
     // Root
     const std::string& getRoot() const;
@@ -38,15 +46,11 @@ class ServerConfig {
     void addErrorPage(int code, const std::string& path);
 
     // Locations
-    std::vector<LocationConfig>&
-    getLocations();  // mutable (ex: serverConfig.getLocations().push_back(...))
-    const std::vector<LocationConfig>& getLocations()
-        const;  // const (ex: const std::vector<LocationConfig>& locations =
-                // serverConfig.getLocations())
+    std::vector<LocationConfig>& getLocations();
+    const std::vector<LocationConfig>& getLocations() const;
 
    private:
-    std::string _host;   // ex. "127.0.0.1"
-    int _port;           // ex. 8080
+    std::vector<ListenEntry> _listens;
     std::string _root;   // ex. "./www"
     std::string _index;  // ex. "index.html"
     size_t _client_max_body_size;
