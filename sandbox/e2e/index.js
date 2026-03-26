@@ -2,6 +2,7 @@ import { CYAN, GREEN, RED, RESET, BOLD } from "./constants.js";
 import runTests200 from "./200.js";
 import runTests400 from "./400.js";
 import runTests404 from "./404.js";
+import runTestsKeepAlive from "./keep-alive.js";
 
 const log = (...args) => console.log("  ", ...args);
 
@@ -9,8 +10,9 @@ async function start() {
   const results200 = await runTests200();
   const results400 = await runTests400();
   const results404 = await runTests404();
+  const resultsKeepAlive = await runTestsKeepAlive();
 
-  const totals = [results200, results400, results404].reduce(
+  const totals = [results200, results400, results404, resultsKeepAlive].reduce(
     (acc, curr) => ({
       failed: acc.failed + curr.failed,
       passed: acc.passed + curr.passed,

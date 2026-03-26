@@ -34,8 +34,8 @@ export function parseResponse(response) {
       if (curr.includes(":"))
         return { ...acc, headers: { ...acc.headers, ...parseHeader(curr) } };
 
-      return { ...acc, body: curr };
+      return { ...acc, body: acc.body + curr };
     },
-    { headers: {} },
+    { body: "", headers: {} },
   );
 }
