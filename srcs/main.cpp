@@ -1,10 +1,9 @@
+#include <cstdio>
 #include <exception>
 
 #include "../includes/Webserv.hpp"
 #include "../includes/config/Config.hpp"
 #include "../includes/utils/Logger.hpp"
-
-#include <cstdio>
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -16,7 +15,7 @@ int main(int argc, char* argv[]) {
 
     config.parse(argv[1]);
 
-	config.print();////
+    config.print();  ////
 
     try {
         Webserv webserv(config);
