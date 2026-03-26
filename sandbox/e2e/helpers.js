@@ -1,8 +1,16 @@
 export function buildRawQuery(testCase) {
-  const { method, route, headers, version } = testCase;
-  const host = Object.keys(headers).find((header) => header === "Host");
+  const { method, route, headers, version, body } = testCase;
 
-  return `${method} ${route} ${version}\r\n${host}: ${headers.Host}\r\n\r\n`;
+  let query = `${method} ${route} ${version}\r\n`;
+
+  Object.entries(headers).forEach(([header, value]) => {
+    query += `${header}: ${value}\r\n`;
+  });
+
+  query += "\r\n";
+  if (body) query += body;
+
+  return query;
 }
 
 function parseResponseFirstLine(line) {
