@@ -32,7 +32,6 @@ SRCS_FILES		= main.cpp \
 								network/helpers.cpp \
 								http/DeleteHttpHandler.cpp \
 								http/GetHttpHandler.cpp \
-								http/HttpHandlerFactory.cpp \
 								http/HttpResponse.cpp \
 								http/HttpRequest.cpp \
 								http/PostHttpHandler.cpp \
@@ -49,6 +48,7 @@ OBJS					= $(addprefix $(OBJS_DIR), $(OBJS_FILES))
 all: $(OBJS_DIR) ${NAME}
 
 $(OBJS_DIR)%.o:	$(SRCS_DIR)%.cpp $(INCLUDES) | $(OBJS_DIR)
+	@mkdir -p $(dir $@)
 	@${CC} $(CFLAGS) $(INCLUDES_FLAGS) -c $< -o $@
 
 $(OBJS_DIR):

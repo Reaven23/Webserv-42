@@ -5,12 +5,14 @@
 #include <iostream>
 #include <sstream>
 
+#include "../../includes/config/ServerConfig.hpp"
 #include "../../includes/utils/Logger.hpp"
 
 using namespace std;
 
 // Constructors
-Client::Client() : _fd(-1), _lastActivity(time(NULL)){};
+Client::Client(const ServerConfig* serverConfig)
+    : _fd(-1), _lastActivity(time(NULL)), _serverConfig(serverConfig){};
 
 // Destructor
 Client::~Client() { close(_fd); };
@@ -36,8 +38,7 @@ time_t Client::getLastActivity() const { return (_lastActivity); };
 
 // Setters
 void Client::setResponse() {
-    _response = HttpResponse::handleRequest(_request.request);
-    // TODO: doublon avec HttpHandler.handle() ?
+    _response = HttpResponse::handleRequest(_request.request, _serverConfig);
     _response.setHeader("Connection", "close");
 };
 

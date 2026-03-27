@@ -20,7 +20,7 @@ using namespace std;
 // Constructors
 // TODO: passer 'server_name' depuis la config pour _name
 Server::Server(int epollFd, ServerConfig const &config)
-    : _name(""), _epollFd(epollFd), _socket(config.getPort()), _clients(){};
+    : _name(""), _config(config), _epollFd(epollFd), _socket(config.getPort()), _clients(){};
 
 // Destructor
 Server::~Server(){};
@@ -73,7 +73,7 @@ void Server::_closeIdleConnections() {
 void Server::_handleNewClient() {
     int serverFd = getFd();
 
-    Client *client = new Client();
+    Client *client = new Client(&_config);
 
     client->accept(serverFd);
 
