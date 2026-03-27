@@ -17,6 +17,8 @@ class Server {
     // Attributes
     std::string const _name;
 
+    ServerConfig const& _config;
+
     int _epollFd;
 
     ServerSocket _socket;

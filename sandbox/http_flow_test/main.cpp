@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 
-#include "../../includes/http/HttpHandlerFactory.hpp"
 #include "../../includes/http/HttpRequest.hpp"
 #include "../../includes/http/HttpResponse.hpp"
 
@@ -47,7 +46,7 @@ static void runPipeline() {
                       : (first.status == INCOMPLETE ? "INCOMPLETE" : "ERROR"))
               << " consumed=" << first.consumed << "\n";
     if (first.status == OK) {
-        HttpResponse r1 = HttpHandlerFactory::handleRequest(first.request);
+        HttpResponse r1 = HttpResponse::handleRequest(first.request);
         std::cout << "[FIRST RESPONSE]\n" << r1.toString() << "\n";
         buffer.erase(0, first.consumed);
     }
@@ -59,7 +58,7 @@ static void runPipeline() {
                       : (second.status == INCOMPLETE ? "INCOMPLETE" : "ERROR"))
               << " consumed=" << second.consumed << "\n";
     if (second.status == OK) {
-        HttpResponse r2 = HttpHandlerFactory::handleRequest(second.request);
+        HttpResponse r2 = HttpResponse::handleRequest(second.request);
         std::cout << "[SECOND RESPONSE]\n" << r2.toString() << "\n";
     }
 }

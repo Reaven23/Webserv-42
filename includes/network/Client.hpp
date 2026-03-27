@@ -15,6 +15,8 @@
 
 const int KEEP_ALIVE_TIMEOUT = 60;
 
+class ServerConfig;
+
 class Client {
    private:
     Client(Client const& other);
@@ -27,10 +29,11 @@ class Client {
     ParsedHttpRequest _request;
     HttpResponse      _response;
     time_t            _lastActivity;
+    const ServerConfig* _serverConfig;
 
    public:
     // Constructors
-    Client();
+    Client(const ServerConfig* serverConfig = 0);
 
     // Destructor
     ~Client();

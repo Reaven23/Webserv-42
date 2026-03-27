@@ -197,11 +197,6 @@ ParsedHttpRequest HttpRequest::parse(const std::string& buffer) {
     _splitUriAndQuery(uri_full, result.request.uri, result.request.queryString);
     result.request.version = version;
 
-    if (result.request.method == UNKNOWN) {
-        result.status = ERROR;
-        return result;
-    }
-
     if (!_parseHeaders(buffer, line_end + 2, headers_end, result.request)) {
         result.status = ERROR;
         return result;

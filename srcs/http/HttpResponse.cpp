@@ -6,6 +6,7 @@
 #include "../../includes/http/GetHttpHandler.hpp"
 #include "../../includes/http/HttpRequest.hpp"
 #include "../../includes/http/PostHttpHandler.hpp"
+#include "../../includes/config/ServerConfig.hpp"
 
 HttpResponse::HttpResponse() : statusCode(200), reasonPhrase("OK") {}
 
@@ -59,10 +60,11 @@ static HttpResponse _methodNotAllowedResponse() {
     return response;
 }
 
-HttpResponse HttpResponse::handleRequest(const HttpRequest& request) {
+HttpResponse HttpResponse::handleRequest(const HttpRequest&         request,
+                                         const ServerConfig* serverConfig) {
     switch (request.method) {
         case GET:
-            return GetHttpHandler().handle(request);
+            return GetHttpHandler(serverConfig).handle(request);
         case POST:
             return PostHttpHandler().handle(request);
         case DELETE:
