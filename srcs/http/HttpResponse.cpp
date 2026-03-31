@@ -66,9 +66,9 @@ HttpResponse HttpResponse::handleRequest(const HttpRequest&         request,
         case GET:
             return GetHttpHandler(serverConfig).handle(request);
         case POST:
-            return PostHttpHandler().handle(request);
+            return PostHttpHandler(serverConfig).handle(request);
         case DELETE:
-            return DeleteHttpHandler().handle(request);
+            return DeleteHttpHandler(serverConfig).handle(request);
         default:
             return _methodNotAllowedResponse();
     }

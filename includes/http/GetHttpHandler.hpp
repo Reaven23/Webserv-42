@@ -1,7 +1,6 @@
 #pragma once
 
 #include <sys/stat.h>
-#include <vector>
 
 #include "./IHttpHandler.hpp"
 
@@ -16,17 +15,8 @@ class GetHttpHandler : public IHttpHandler {
   private:
     const ServerConfig* _serverConfig;
 
-    static const LocationConfig* _findLocation(const std::string& uri,
-                                               const ServerConfig* serverConfig);
-
     static HttpResponse _textResponse(int code, const std::string& reason,
                                        const std::string& body);
-
-    static HttpResponse _errorResponse(int code, const std::string& reason,
-                                        const ServerConfig* serverConfig);
-
-    static HttpResponse _methodNotAllowedResponse(
-        const std::vector<std::string>& allowedMethods);
 
     static HttpResponse _redirectResponse(int code, const std::string& target);
 
@@ -42,7 +32,4 @@ class GetHttpHandler : public IHttpHandler {
 
     static HttpResponse _autoindexResponse(const std::string& dirPath,
                                             const std::string& uri);
-
-    static std::string _percentDecode(const std::string& encoded);
-    static std::string _normalizePath(const std::string& path);
 };
