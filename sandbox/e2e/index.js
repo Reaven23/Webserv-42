@@ -2,6 +2,8 @@ import { CYAN, GREEN, RED, RESET, BOLD } from "./constants.js";
 import runTests200 from "./200.js";
 import runTests400 from "./400.js";
 import runTests404 from "./404.js";
+import runTestsChunked from "./chunked.js";
+import runTestsConcurrent from "./concurrent.js";
 import runTestsKeepAlive from "./keep-alive.js";
 import runTestsTimeout from "./timeout.js";
 
@@ -13,6 +15,8 @@ async function start() {
     await runTests200(),
     await runTests400(),
     await runTests404(),
+    await runTestsChunked(),
+    await runTestsConcurrent(),
   ];
 
   if (all) {

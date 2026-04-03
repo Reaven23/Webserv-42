@@ -5,7 +5,7 @@ import { buildRawQuery, parseResponse } from "./helpers.js";
 
 const log = (...args) => console.log("  ", ...args);
 
-function test(testCase, result) {
+export function test(testCase, result) {
   const { expected, ...testInput } = testCase;
   const { statusCode, reason, body, headers } = result;
 
