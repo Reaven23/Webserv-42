@@ -2,15 +2,25 @@ import { CYAN, GREEN, RED, RESET, BOLD } from "./constants.js";
 import runTests200 from "./200.js";
 import runTests400 from "./400.js";
 import runTests404 from "./404.js";
+import runTestsKeepAlive from "./keep-alive.js";
+import runTestsTimeout from "./timeout.js";
 
 const log = (...args) => console.log("  ", ...args);
+const all = process.argv.includes("--all");
 
 async function start() {
-  const results200 = await runTests200();
-  const results400 = await runTests400();
-  const results404 = await runTests404();
+  const results = [
+    await runTests200(),
+    await runTests400(),
+    await runTests404(),
+  ];
 
-  const totals = [results200, results400, results404].reduce(
+  if (all) {
+    results.push(await runTestsKeepAlive());
+    results.push(await runTestsTimeout());
+  }
+
+  const totals = results.reduce(
     (acc, curr) => ({
       failed: acc.failed + curr.failed,
       passed: acc.passed + curr.passed,

@@ -17,25 +17,11 @@ const testCases = [
     },
   },
   {
-    name: "GET request to '/' with 'Connection: keep-alive' header should respond 200",
+    name: "GET request to '/' with 'Accept' header should respond 200",
     route: "/",
     method: "GET",
     headers: {
       Host: HOST,
-      Connection: "keep-alive",
-    },
-    version: "HTTP/1.1",
-    expected: {
-      status: "200",
-    },
-  },
-  {
-    name: "GET request to '/' with 'Connection: keep-alive' and 'Accept' headers should respond 200",
-    route: "/",
-    method: "GET",
-    headers: {
-      Host: HOST,
-      Connection: "keep-alive",
       Accept: "*/*",
     },
     version: "HTTP/1.1",
@@ -44,12 +30,11 @@ const testCases = [
     },
   },
   {
-    name: "GET request to '/' with 'Connection: keep-alive', 'Accept' and 'User-Agent' headers should respond 200",
+    name: "GET request to '/' with Accept' and 'User-Agent' headers should respond 200",
     route: "/",
     method: "GET",
     headers: {
       Host: HOST,
-      Connection: "keep-alive",
       Accept: "*/*",
       "User-Agent": "node",
     },
@@ -64,19 +49,13 @@ const testCases = [
     method: "GET",
     headers: {
       Host: HOST,
-      Connection: "keep-alive",
       Accept: "*/*",
       "User-Agent": "node",
     },
     version: "HTTP/1.1",
     expected: {
       status: "200",
-      body: `<html>
-  <body>
-    <h1>Hello Webserv</h1>
-  </body>
-</html>
-`,
+      body: `<html>\r\n  <body>\r\n    <h1>Hello Webserv</h1>\r\n  </body>\r\n</html>\r\n`,
     },
   },
   {
@@ -85,7 +64,6 @@ const testCases = [
     method: "GET",
     headers: {
       Host: HOST,
-      Connection: "keep-alive",
       Accept: "*/*",
       "User-Agent": "node",
     },

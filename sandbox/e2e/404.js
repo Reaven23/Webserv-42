@@ -24,7 +24,7 @@ const testCases = [
 ];
 
 async function run() {
-  log(`\n${CYAN}##### - Starting 400 suite... - #####${RESET}`);
+  log(`\n${CYAN}##### - Starting 404 suite... - #####${RESET}`);
 
   let failsCount = 0;
   for (const testCase of testCases) {
