@@ -20,6 +20,8 @@ class GetHttpHandler : public IHttpHandler {
 
     static HttpResponse _redirectResponse(int code, const std::string& target);
 
+    static std::string _extensionLower(const std::string& path);
+
     static std::string _contentTypeFromPath(const std::string& path);
 
     static std::string _resolvePath(const HttpRequest& request,

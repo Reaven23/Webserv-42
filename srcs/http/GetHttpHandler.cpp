@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cctype>
 #include <fstream>
 #include <sstream>
 
@@ -26,27 +27,29 @@ HttpResponse GetHttpHandler::_textResponse(int code, const std::string& reason,
     return response;
 }
 
+std::string GetHttpHandler::_extensionLower(const std::string& path) {
+    std::string::size_type dot = path.find_last_of('.');
+    if (dot == std::string::npos || dot + 1 >= path.size())
+        return "";
+    std::string ext = path.substr(dot);
+    for (size_t i = 0; i < ext.size(); ++i) {
+        ext[i] = static_cast<char>(
+            std::tolower(static_cast<unsigned char>(ext[i])));
+    }
+    return ext;
+}
+
 std::string GetHttpHandler::_contentTypeFromPath(const std::string& path) {
-    if (path.size() >= 5 && path.substr(path.size() - 5) == ".html")
-        return "text/html";
-    if (path.size() >= 4 && path.substr(path.size() - 4) == ".css")
-        return "text/css";
-    if (path.size() >= 3 && path.substr(path.size() - 3) == ".js")
-        return "application/javascript";
-    if (path.size() >= 4 && path.substr(path.size() - 4) == ".svg")
-        return "image/svg+xml";
-    if (path.size() >= 4 && path.substr(path.size() - 4) == ".png")
-        return "image/png";
-    if (path.size() >= 4 && path.substr(path.size() - 4) == ".gif")
-        return "image/gif";
-    if (path.size() >= 5 && path.substr(path.size() - 5) == ".webp")
-        return "image/webp";
-    if (path.size() >= 4 && path.substr(path.size() - 4) == ".ico")
-        return "image/x-icon";
-    if (path.size() >= 4 && path.substr(path.size() - 4) == ".jpg")
-        return "image/jpeg";
-    if (path.size() >= 5 && path.substr(path.size() - 5) == ".jpeg")
-        return "image/jpeg";
+    std::string ext = _extensionLower(path);
+    if (ext == ".html") return "text/html";
+    if (ext == ".css") return "text/css";
+    if (ext == ".js") return "application/javascript";
+    if (ext == ".svg") return "image/svg+xml";
+    if (ext == ".png") return "image/png";
+    if (ext == ".gif") return "image/gif";
+    if (ext == ".webp") return "image/webp";
+    if (ext == ".ico") return "image/x-icon";
+    if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
     return "application/octet-stream";
 }
 

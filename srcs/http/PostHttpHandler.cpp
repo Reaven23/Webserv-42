@@ -12,33 +12,21 @@
 PostHttpHandler::PostHttpHandler(const ServerConfig* serverConfig)
     : _serverConfig(serverConfig) {}
 
-bool PostHttpHandler::_isMultipart(const HttpRequest& request,
-                                    std::string& boundary) {
-    std::map<std::string, std::string>::const_iterator it =
-        request.headers.find("content-type");
-    if (it == request.headers.end())
-        return false;
-
-    const std::string& ct = it->second;
-    if (ct.compare(0, 19, "multipart/form-data") != 0)
-        return false;
-
-    boundary = _extractBoundary(ct);
-    return !boundary.empty();
-}
-
-std::string PostHttpHandler::_extractBoundary(const std::string& contentType) {
+bool PostHttpHandler::_extractBoundary(const std::string& contentType,
+                                       std::string& boundary) {
+    boundary.clear();
     std::string::size_type pos = contentType.find("boundary=");
     if (pos == std::string::npos)
-        return "";
+        return false;
 
-    std::string boundary = contentType.substr(pos + 9);
+    boundary = contentType.substr(pos + 9);
 
     if (!boundary.empty() && boundary[0] == '"') {
         boundary = boundary.substr(1);
         std::string::size_type end = boundary.find('"');
-        if (end != std::string::npos)
-            boundary = boundary.substr(0, end);
+        if (end == std::string::npos)
+            return false;
+        boundary = boundary.substr(0, end);
     }
 
     std::string::size_type semi = boundary.find(';');
@@ -48,12 +36,14 @@ std::string PostHttpHandler::_extractBoundary(const std::string& contentType) {
     while (!boundary.empty() && boundary[boundary.size() - 1] == ' ')
         boundary.erase(boundary.size() - 1);
 
-    return boundary;
+    return !boundary.empty();
 }
 
 std::vector<PostHttpHandler::UploadedFile>
 PostHttpHandler::_parseMultipart(const std::string& body,
-                                  const std::string& boundary) {
+                                 const std::string& boundary,
+                                 bool& malformed) {
+    malformed = false;
     std::vector<UploadedFile> files;
     std::string delim = "--" + boundary;
     std::string endDelim = delim + "--";
@@ -93,8 +83,11 @@ PostHttpHandler::_parseMultipart(const std::string& body,
         if (fnPos != std::string::npos) {
             fnPos += 10;
             std::string::size_type fnEnd = headers.find('"', fnPos);
-            if (fnEnd != std::string::npos)
-                filename = headers.substr(fnPos, fnEnd - fnPos);
+            if (fnEnd == std::string::npos) {
+                malformed = true;
+                return files;
+            }
+            filename = headers.substr(fnPos, fnEnd - fnPos);
         }
 
         std::string ct;
@@ -199,9 +192,26 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     if (stat(uploadDir.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode))
         return _errorResponse(500, "Internal Server Error", _serverConfig);
 
+    std::map<std::string, std::string>::const_iterator ctIt =
+        request.headers.find("content-type");
+    bool isMultipartRequest = false;
     std::string boundary;
-    if (_isMultipart(request, boundary)) {
-        std::vector<UploadedFile> files = _parseMultipart(request.body, boundary);
+    if (ctIt != request.headers.end()) {
+        const std::string& ctv = ctIt->second;
+        if (ctv.size() >= 19 &&
+            ctv.compare(0, 19, "multipart/form-data") == 0) {
+            isMultipartRequest = true;
+            if (!_extractBoundary(ctv, boundary))
+                return _errorResponse(400, "Bad Request", _serverConfig);
+        }
+    }
+
+    if (isMultipartRequest) {
+        bool malformedMultipart = false;
+        std::vector<UploadedFile> files =
+            _parseMultipart(request.body, boundary, malformedMultipart);
+        if (malformedMultipart)
+            return _errorResponse(400, "Bad Request", _serverConfig);
         if (files.empty())
             return _errorResponse(400, "Bad Request", _serverConfig);
 

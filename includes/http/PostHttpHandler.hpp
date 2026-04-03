@@ -21,9 +21,10 @@ class PostHttpHandler : public IHttpHandler {
         std::string data;
     };
 
-    static bool        _isMultipart(const HttpRequest& request, std::string& boundary);
-    static std::string _extractBoundary(const std::string& contentType);
+    static bool _extractBoundary(const std::string& contentType,
+                                 std::string& boundary);
     static std::vector<UploadedFile> _parseMultipart(const std::string& body,
-                                                      const std::string& boundary);
+                                                     const std::string& boundary,
+                                                     bool& malformed);
     static std::string _sanitizeFilename(const std::string& raw);
 };
