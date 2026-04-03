@@ -163,7 +163,7 @@ bool Client::isKeepAlive() const {
     map<string, string>                 headers = _request.request.headers;
     map<string, string>::const_iterator it;
 
-    it = headers.find("keep-alive");
+    it = headers.find("connection");
     if (it != headers.end()) return (true);
 
     return (false);

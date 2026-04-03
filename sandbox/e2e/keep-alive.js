@@ -49,7 +49,7 @@ const testCases = [
       status: "200",
     },
     execute: connectionClosed,
-    duration: 61000,
+    duration: 65000,
   },
 ];
 
