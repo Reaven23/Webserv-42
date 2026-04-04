@@ -63,7 +63,10 @@ void Client::accept(int serverFd) {
 }
 
 ssize_t Client::read() {
-    Logger::info(string("Request from client ") + getIp());
+    ostringstream oss;
+
+    oss << "Request from client '" << _fd << "|" << getIp() << "'";
+    Logger::info(oss.str());
 
     // Temp buffer to store the received data.
     char    tmp[1024] = {0};
@@ -81,22 +84,24 @@ ssize_t Client::read() {
     if (bytes > 0) {
         _buffer.append(tmp, bytes);
     } else if (bytes == 0) {  // client has ended the connection
-        ostringstream os;
+        oss.str("");
+        oss.clear();
 
-        os << "Client '" << _fd << "|" << getIp()
-           << "' has ended the connection" << endl;
-        Logger::info(os.str());
+        oss << "Client '" << _fd << "|" << getIp()
+            << "' has ended the connection" << endl;
+        Logger::info(oss.str());
 
         close(_fd);  // automatically removes the fd from epoll interest list;
 
     } else {
-        ostringstream os;
+        oss.str("");
+        oss.clear();
 
-        os << "recv(): Failed to read data from client '" << _fd << "|"
-           << getIp() << "'";
-        os << strerror(errno);
+        oss << "recv(): Failed to read data from client '" << _fd << "|"
+            << getIp() << "'";
+        oss << strerror(errno);
 
-        Logger::error(os.str());
+        Logger::error(oss.str());
         close(_fd);
     }
 
@@ -133,11 +138,6 @@ ssize_t Client::send() {
         return (-1);
     }
 
-    os << "Sent " << raw.size() << " bytes to client '" << _fd << "|" << getIp()
-       << "'" << endl;
-
-    Logger::info(os.str());
-
     setLastActivity();
 
     return (bytes);
@@ -167,4 +167,23 @@ bool Client::isKeepAlive() const {
     if (it != headers.end()) return (true);
 
     return (false);
+}
+
+void Client::logResponse() const {
+    ostringstream                       os;
+    map<string, string>::const_iterator it;
+
+    os << "Response sent to '" << _fd << "|" << getIp() << ":\n";
+    os << "{\n";
+    os << "  status: " << _response.statusCode << "\n";
+    os << "  headers: {\n";
+    for (it = _response.headers.begin(); it != _response.headers.end(); it++) {
+        os << "    " << it->first << ": " << it->second << "\n";
+    }
+    os << "  }\n";
+    os << "}";
+
+    _response.statusCode >= 200 && _response.statusCode < 300
+        ? Logger::info(os.str())
+        : Logger::warn(os.str());
 }
