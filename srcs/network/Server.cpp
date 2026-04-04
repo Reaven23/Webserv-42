@@ -20,7 +20,11 @@ using namespace std;
 // Constructors
 // TODO: passer 'server_name' depuis la config pour _name
 Server::Server(int epollFd, ServerConfig const &config)
-    : _name(""), _config(config), _epollFd(epollFd), _socket(config.getPort()), _clients(){};
+    : _name(""),
+      _config(config),
+      _epollFd(epollFd),
+      _socket(config.getPort()),
+      _clients(){};
 
 // Destructor
 Server::~Server(){};
@@ -80,16 +84,8 @@ void Server::_handleNewClient() {
     int clientFd = client->getFd();
 
     if (clientFd == -1) {
-        if (errno == EAGAIN ||
-            errno == EWOULDBLOCK) {  // All pending connections processed
-            Logger::info("All incoming connections processed");
-
-            return;
-        } else {
-            Logger::error(
-                std::string("accept(): Failed to accept connection: ") +
-                strerror(errno));
-        }
+        Logger::error(std::string("accept(): Failed to accept connection: ") +
+                      strerror(errno));
         delete client;
 
         return;
@@ -144,6 +140,8 @@ void Server::_handleResponse(int clientFd) {
     if (client->send() == -1) return;
 
     if (client->isResponseComplete()) {
+        client->logResponse();
+
         if (client->isKeepAlive()) {
             client->reset();
             client->setLastActivity();

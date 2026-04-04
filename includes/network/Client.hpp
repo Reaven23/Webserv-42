@@ -23,12 +23,12 @@ class Client {
     Client& operator=(Client const& other);
 
     // Attributes
-    int               _fd;
-    sockaddr_in       _addr;
-    std::string       _buffer;
-    ParsedHttpRequest _request;
-    HttpResponse      _response;
-    time_t            _lastActivity;
+    int                 _fd;
+    sockaddr_in         _addr;
+    std::string         _buffer;
+    ParsedHttpRequest   _request;
+    HttpResponse        _response;
+    time_t              _lastActivity;
     const ServerConfig* _serverConfig;
 
    public:
@@ -60,4 +60,5 @@ class Client {
     bool    isRequestError() const;
     bool    isResponseComplete() const;
     bool    isKeepAlive() const;
+    void    logResponse() const;
 };
