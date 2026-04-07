@@ -8,7 +8,7 @@ const log = (...args) => console.log("  ", ...args);
 
 const testCases = [
   {
-    name: "POST chunked request (all chunks at once) should respond 200",
+    name: "POST chunked request (all chunks at once) should respond 201",
     route: "/upload",
     method: "POST",
     headers: {
@@ -18,12 +18,12 @@ const testCases = [
     version: "HTTP/1.1",
     body: "5\r\nHello\r\n6\r\n World\r\n0\r\n\r\n",
     expected: {
-      status: "200",
+      status: "201",
     },
     executor: execute,
   },
   {
-    name: "POST chunked request with streaming chunks should respond 200",
+    name: "POST chunked request with streaming chunks should respond 201",
     route: "/upload",
     method: "POST",
     headers: {
@@ -33,12 +33,12 @@ const testCases = [
     version: "HTTP/1.1",
     chunks: ["5\r\nHello\r\n", "6\r\n World\r\n"],
     expected: {
-      status: "200",
+      status: "201",
     },
     executor: chunkExecutor,
   },
   {
-    name: "POST chunked request with one chunk should respond 200",
+    name: "POST chunked request with one chunk should respond 201",
     route: "/upload",
     method: "POST",
     headers: {
@@ -48,12 +48,12 @@ const testCases = [
     version: "HTTP/1.1",
     chunks: ["5\r\nProut\r\n"],
     expected: {
-      status: "200",
+      status: "201",
     },
     executor: chunkExecutor,
   },
   {
-    name: "POST chunked request with empty body should respond 200",
+    name: "POST chunked request with empty body should respond 201",
     route: "/upload",
     method: "POST",
     headers: {
@@ -63,7 +63,7 @@ const testCases = [
     version: "HTTP/1.1",
     chunks: ["0\r\n\r\n"],
     expected: {
-      status: "200",
+      status: "201",
     },
     executor: chunkExecutor,
   },
