@@ -136,7 +136,7 @@ const testCases = [
       "Transfer-Encoding": "chunked",
     },
     version: "HTTP/1.1",
-    chunks: ["5\r\nHello", "1\r\n World\r\n"],
+    chunks: ["5\r\nHello\r\n", "6\r\n World\r\n"],
     expected: {},
     executor: chunkExecutor,
     isMissingChunkTest: true,
