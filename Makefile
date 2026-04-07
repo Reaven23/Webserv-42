@@ -23,19 +23,33 @@ INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
 # Sources
 SRCS_DIR			= srcs/
 SRCS_FILES		= main.cpp \
-								ServerSocket.cpp \
+								config/Config.cpp \
+								config/LocationConfig.cpp \
+								config/ServerConfig.cpp \
+								network/Client.cpp \
+								network/Server.cpp \
+								network/ServerSocket.cpp \
+								network/helpers.cpp \
+								http/DeleteHttpHandler.cpp \
+								http/IHttpHandler.cpp \
+								http/GetHttpHandler.cpp \
+								http/HttpResponse.cpp \
+								http/HttpRequest.cpp \
+								http/PostHttpHandler.cpp \
 								utils/Logger.cpp \
-								utils/Time.cpp
+								utils/Time.cpp \
+								Webserv.cpp
 SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 
 # Objects
 OBJS_DIR			= objs/
-OBJS_FILES		= $(SRCS_MAIN:.cpp=.o) $(SRCS_FILES:.cpp=.o)
+OBJS_FILES		= $(SRCS_FILES:.cpp=.o)
 OBJS					= $(addprefix $(OBJS_DIR), $(OBJS_FILES))
 
 all: $(OBJS_DIR) ${NAME}
 
 $(OBJS_DIR)%.o:	$(SRCS_DIR)%.cpp $(INCLUDES) | $(OBJS_DIR)
+	@mkdir -p $(dir $@)
 	@${CC} $(CFLAGS) $(INCLUDES_FLAGS) -c $< -o $@
 
 $(OBJS_DIR):
@@ -57,6 +71,16 @@ fclean: clean
 	@rm -f $(NAME)
 	@echo $(GREEN) " $(NAME) deleted" $(RESET)
 	@echo $(GREEN) "full clean done" $(RESET)
+
+tests:
+	@echo "Starting tests suites..."
+	@node sandbox/e2e/index.js
+	@echo "\n...all tests done."
+
+tests-all:
+	@echo "Starting tests suites with slow (keep-alive, timeout)..."
+	@node sandbox/e2e/index.js --all
+	@echo "\n...all tests done."
 
 
 re:	fclean all

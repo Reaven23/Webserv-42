@@ -1,49 +1,59 @@
 #pragma once
 
-#include "LocationConfig.hpp"
 #include <map>
 #include <string>
 #include <vector>
 
+#include "LocationConfig.hpp"
+
+//// Socket bind : IP + port.
+struct ListenEntry {
+    std::string host;
+    int port;
+};
+
 class ServerConfig {
-public:
-	ServerConfig(void);
-	ServerConfig(const ServerConfig& other);
-	~ServerConfig(void);
+   public:
+    ServerConfig(void);
+    ServerConfig(const ServerConfig& other);
+    ~ServerConfig(void);
 
-	ServerConfig& operator=(const ServerConfig& other);
+    ServerConfig& operator=(const ServerConfig& other);
 
-	// Listen
-	std::string getHost() const;
-	int getPort() const;
-	void setListen(const std::string& host, int port);
+    // Listens: several `listen` lines in the same `server { }` append here.
+    const std::vector<ListenEntry>& getListens() const;
+    void addListen(const std::string& host, int port);
 
-	// Root
-	const std::string& getRoot() const;
-	void setRoot(const std::string& root);
+    //// TEMP, for compile (until network uses getListens() / ListenEntry)
+    std::string getHost() const;
+    int getPort() const;
+    //// end TEMP
 
-	// Index
-	const std::string& getIndex() const;
-	void setIndex(const std::string& index);
+    // Root
+    const std::string& getRoot() const;
+    void setRoot(const std::string& root);
 
-	// Body size max
-	size_t getClientMaxBodySize() const;
-	void setClientMaxBodySize(size_t size);
+    // Index
+    const std::string& getIndex() const;
+    void setIndex(const std::string& index);
 
-	// Errors pages (by [error code] -> [error paage])
-	const std::map<int, std::string>& getErrorPages() const;
-	void addErrorPage(int code, const std::string& path);
+    // Body size max
+    size_t getClientMaxBodySize() const;
+    void setClientMaxBodySize(size_t size);
 
-	// Locations
-	std::vector<LocationConfig>& getLocations(); // mutable (ex: serverConfig.getLocations().push_back(...))
-	const std::vector<LocationConfig>& getLocations() const; // const (ex: const std::vector<LocationConfig>& locations = serverConfig.getLocations())
+    // Errors pages (by [error code] -> [error paage])
+    const std::map<int, std::string>& getErrorPages() const;
+    void addErrorPage(int code, const std::string& path);
 
-private:
-	std::string _host;   // ex. "127.0.0.1"
-	int _port;           // ex. 8080
-	std::string _root;   // ex. "./www"
-	std::string _index;  // ex. "index.html"
-	size_t _client_max_body_size;
-	std::map<int, std::string> _error_pages;  // code -> path
-	std::vector<LocationConfig> _locations;
+    // Locations
+    std::vector<LocationConfig>& getLocations();
+    const std::vector<LocationConfig>& getLocations() const;
+
+   private:
+    std::vector<ListenEntry> _listens;
+    std::string _root;   // ex. "./www"
+    std::string _index;  // ex. "index.html"
+    size_t _client_max_body_size;
+    std::map<int, std::string> _error_pages;  // code -> path
+    std::vector<LocationConfig> _locations;
 };

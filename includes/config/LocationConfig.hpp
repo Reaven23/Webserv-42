@@ -1,9 +1,16 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 class LocationConfig {
 public:
+
+	enum AutoindexState {
+		AUTOINDEX_UNSET = 0,
+		AUTOINDEX_OFF,
+		AUTOINDEX_ON
+	};
 	LocationConfig(void);
 	LocationConfig(const LocationConfig& other);
 	~LocationConfig(void);
@@ -13,7 +20,45 @@ public:
 	const std::string& getPath() const;
 	void setPath(const std::string& path);
 
-private:
-	std::string _path;  // ex. "/", "/upload", ...
-	//// methods, ... see later
+	void addMethod(const std::string& method);
+	const std::vector<std::string>& getMethods() const;
+
+    // empty = inherit from server
+    const std::string& getRoot() const;
+    void setRoot(const std::string& root);
+
+    const std::string& getIndex() const;
+    void setIndex(const std::string& index);
+
+    AutoindexState getAutoindexState() const;
+    void setAutoindexState(AutoindexState state);
+
+    bool hasRedirect() const;
+    const std::string& getRedirectTarget() const;
+    int getRedirectCode() const;
+    void setRedirect(const std::string& target, int code);
+
+    bool hasUploadDirective() const;
+    bool getUploadEnabled() const;
+    void setUpload(bool enabled);
+
+    const std::string& getUploadPath() const;
+    void setUploadPath(const std::string& path);
+
+    bool hasCgiExtension() const;
+    const std::string& getCgiExtension() const;
+    void setCgiExtension(const std::string& ext);
+
+   private:
+    std::string _path;  // ex. "/", "/upload", ...
+    std::vector<std::string> _methods;  // ex. "GET", "POST", ...
+    std::string _root;  // ex. "./www"
+    std::string _index;  // ex. "index.html"
+    AutoindexState _autoindex;  // ex. AUTOINDEX_UNSET, AUTOINDEX_OFF, AUTOINDEX_ON
+    std::string _redirect_target;  // ex. "/new"
+    int _redirect_code;  // ex. 301
+    bool _upload_specified;
+    bool _upload_enabled;
+    std::string _upload_path;  // ex. "./uploads"
+    std::string _cgi_extension;  // ex. ".py"
 };
