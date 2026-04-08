@@ -21,6 +21,9 @@ class Webserv {
 
     std::vector<Server*> _servers;
 
+    // Methods
+    void _runEventLoop() const;
+
    public:
     // Constructors
     Webserv(Config const& config);
