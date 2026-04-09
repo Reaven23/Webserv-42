@@ -26,32 +26,18 @@ class Server {
     std::map<int, Client*> _clients;
 
     // Methods
-
     void _remove(int clientFd);
 
     void _clear();
 
-    void _closeIdleConnections();
-
-    void _handleNewClient();
-
-    void _handleRequest(int clientFd);
-
-    void _handleResponse(int clientFd);
-
-    void _startEventLoop();
-
    public:
     // Constructors
-
     Server(int epollFd, ServerConfig const& config);
 
     // Destructor
-
     ~Server();
 
     // Getters
-
     std::string const& getName();
 
     int getEpollFd() const;
@@ -60,7 +46,16 @@ class Server {
 
     int getFd() const;
 
-    // Methods
+    std::map<int, Client*> getClients();
 
-    void run();
+    // Methods
+    void setup();
+
+    void handleNewClient();
+
+    void handleRequest(int Clientfd);
+
+    void handleResponse(int clientFd);
+
+    void closeIdleConnections();
 };
