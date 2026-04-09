@@ -3,13 +3,12 @@
 #include <fstream>
 #include <sstream>
 
-#include "../../includes/config/LocationConfig.hpp"
 #include "../../includes/config/ServerConfig.hpp"
 
 using namespace std;
 
-const LocationConfig* IHttpHandler::_findLocation(
-    const string& uri, const ServerConfig* serverConfig) {
+const LocationConfig* IHttpHandler::findLocation(
+    const std::string& uri, const ServerConfig* serverConfig) {
     if (serverConfig == NULL) return NULL;
 
     const LocationConfig*         best = NULL;
@@ -31,8 +30,44 @@ const LocationConfig* IHttpHandler::_findLocation(
     return best;
 }
 
-HttpResponse IHttpHandler::_errorResponse(int code, const string& reason,
-                                          const ServerConfig* serverConfig) {
+std::string IHttpHandler::mapUriToFilesystemPath(
+    const std::string& sanitizedUri, const ServerConfig* serverConfig,
+    const LocationConfig* location) {
+    std::string baseRoot = ".";
+    if (serverConfig != NULL && !serverConfig->getRoot().empty())
+        baseRoot = serverConfig->getRoot();
+
+    std::string relPath = sanitizedUri;
+    if (location != NULL) {
+        if (!location->getRoot().empty()) baseRoot = location->getRoot();
+        relPath = sanitizedUri.substr(location->getPath().size());
+        if (relPath.empty() || relPath[0] != '/') relPath = "/" + relPath;
+    }
+    return baseRoot + relPath;
+}
+
+bool IHttpHandler::sanitizeUriPath(const std::string& uri,
+                                   std::string& outClean, int& errorCode) {
+    if (uri.empty() || uri[0] != '/') {
+        errorCode = 400;
+        return false;
+    }
+    std::string decoded = _percentDecode(uri);
+    if (decoded.empty()) {
+        errorCode = 400;
+        return false;
+    }
+    std::string cleanUri = _normalizePath(decoded);
+    if (cleanUri.empty()) {
+        errorCode = 403;
+        return false;
+    }
+    outClean = cleanUri;
+    return true;
+}
+
+HttpResponse IHttpHandler::errorResponse(int code, const std::string& reason,
+                                         const ServerConfig* serverConfig) {
     if (serverConfig != NULL) {
         const map<int, string>& errorPages = serverConfig->getErrorPages();
         map<int, string>::const_iterator it = errorPages.find(code);

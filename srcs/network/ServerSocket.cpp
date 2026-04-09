@@ -71,7 +71,7 @@ ServerSocket::ServerSocket(int port) {
         throw runtime_error(string("bind(): Fatal error: ") + strerror(errno));
     }
 
-    if (!setSocketNonBlocking(_fd)) {
+    if (!setSocketNonBlocking(_fd) || !setCloseOnExec(_fd)) {
         throw runtime_error(string("fnctl(): Error when setting socket to "
                                    "non-blocking mode: ") +
                             strerror(errno));

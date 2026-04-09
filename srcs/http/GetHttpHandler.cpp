@@ -90,7 +90,7 @@ bool GetHttpHandler::_isReadableFile(const string& path) {
 HttpResponse GetHttpHandler::_autoindexResponse(const string& dirPath,
                                                 const string& uri) {
     DIR* dir = opendir(dirPath.c_str());
-    if (dir == NULL) return _errorResponse(500, "Internal Server Error", NULL);
+    if (dir == NULL) return errorResponse(500, "Internal Server Error", NULL);
 
     string uriSlash = uri;
     if (uriSlash.empty() || uriSlash[uriSlash.size() - 1] != '/')
@@ -136,9 +136,8 @@ string GetHttpHandler::_resolvePath(const HttpRequest&    request,
                                     const LocationConfig* location) {
     string uriPath = request.uri;
 
-    string baseRoot = ".";
-    string baseIndex = "index.html";
-    string relPath = uriPath;
+    std::string baseRoot = ".";
+    std::string baseIndex = "index.html";
 
     if (serverConfig != NULL) {
         if (!serverConfig->getRoot().empty())
@@ -150,13 +149,12 @@ string GetHttpHandler::_resolvePath(const HttpRequest&    request,
     if (location != NULL) {
         if (!location->getRoot().empty()) baseRoot = location->getRoot();
         if (!location->getIndex().empty()) baseIndex = location->getIndex();
-        relPath = uriPath.substr(location->getPath().size());
-        if (relPath.empty() || relPath[0] != '/') relPath = "/" + relPath;
     }
 
     if (uriPath == "/") return baseRoot + "/" + baseIndex;
 
-    string      direct = baseRoot + relPath;
+    std::string direct =
+        mapUriToFilesystemPath(uriPath, serverConfig, location);
     struct stat st = {};
     if (_fileExists(direct, &st) && S_ISREG(st.st_mode)) return direct;
 
@@ -176,22 +174,17 @@ string GetHttpHandler::_resolvePath(const HttpRequest&    request,
 }
 
 HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
-    if (request.uri.empty() || request.uri[0] != '/')
-        return _errorResponse(400, "Bad Request", _serverConfig);
-
-    string decoded = _percentDecode(request.uri);
-    if (decoded.empty())
-        return _errorResponse(400, "Bad Request", _serverConfig);
-
-    string cleanUri = _normalizePath(decoded);
-    if (cleanUri.empty())
-        return _errorResponse(403, "Forbidden", _serverConfig);
+    std::string cleanUri;
+    int         uriErr = 0;
+    if (!sanitizeUriPath(request.uri, cleanUri, uriErr))
+        return errorResponse(uriErr == 400 ? 400 : 403,
+                             uriErr == 400 ? "Bad Request" : "Forbidden",
+                             _serverConfig);
 
     HttpRequest sanitized = request;
     sanitized.uri = cleanUri;
 
-    const LocationConfig* location =
-        _findLocation(sanitized.uri, _serverConfig);
+    const LocationConfig* location = findLocation(sanitized.uri, _serverConfig);
 
     if (location != NULL) {
         const vector<string>& methods = location->getMethods();
@@ -215,26 +208,26 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
 
     struct stat st = {};
     if (!_fileExists(path, &st))
-        return _errorResponse(404, "Not Found", _serverConfig);
+        return errorResponse(404, "Not Found", _serverConfig);
     if (S_ISDIR(st.st_mode)) {
         if (location != NULL &&
             location->getAutoindexState() == LocationConfig::AUTOINDEX_ON)
             return _autoindexResponse(path, sanitized.uri);
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
     }
     if (!S_ISREG(st.st_mode))
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
     if (!_isReadableFile(path))
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
 
     ifstream file(path.c_str(), ios::in | ios::binary);
     if (!file.is_open())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     ostringstream body;
     body << file.rdbuf();
     if (!file.good() && !file.eof())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     HttpResponse response(200, "OK");
     response.setBody(body.str());

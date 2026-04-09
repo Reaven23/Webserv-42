@@ -68,7 +68,7 @@
     <div class="card" id="upload">
         <h2><span class="tag tag-post">POST</span> Upload a file</h2>
 
-        <form method="POST" action="/uploads/" enctype="multipart/form-data">
+        <form method="POST" action="/upload" enctype="multipart/form-data">
             <div class="upload-zone">
                 <p style="margin-bottom:8px; color:#94a3b8;">Choose a file from your computer</p>
                 <input type="file" name="file"
@@ -81,6 +81,7 @@
         <p class="note">
             The file is sent as <code>multipart/form-data</code>. The server parses the boundary, extracts the filename and binary data, and writes it to the <code>upload_path</code> directory.
             After upload you will see "201 Created" &mdash; click Back to return here, then check Browse to see your file.
+            <strong>Important:</strong> start <code>./webserv</code> with a config under <code>config/</code> (e.g. <code>./webserv config/full.conf</code>) so the process cwd is the repo root and paths like <code>./uploads</code> resolve correctly for <code>GET /files/</code>.
         </p>
     </div>
 
@@ -88,13 +89,13 @@
     <div class="card" id="browse">
         <h2><span class="tag tag-get">GET</span> Browse uploaded files</h2>
 
-        <p>Click to open the uploads directory (autoindex) :</p>
-        <a href="/uploads/" style="display:inline-block; margin:10px 0;">
-            <button class="btn-browse">Open /uploads/</button>
+        <p>Click to open the uploads directory (autoindex on <code>/files/</code>) :</p>
+        <a href="/files/" style="display:inline-block; margin:10px 0;">
+            <button class="btn-browse">Open /files/</button>
         </a>
 
         <p style="margin-top:12px;">Or preview here (iframe) :</p>
-        <iframe src="/uploads/" class="browse-frame" title="uploads directory listing"></iframe>
+        <iframe src="/files/" class="browse-frame" title="uploads directory listing"></iframe>
 
         <p class="note">Click any filename in the list to view/download it. Images will display in the browser, other files will download.</p>
     </div>
@@ -104,10 +105,10 @@
         <h2><span class="tag tag-del">DELETE</span> Delete files</h2>
         <p style="margin-bottom:10px;">HTML forms don't support the DELETE method. Use <code>curl</code> from your terminal :</p>
         <pre># Delete a specific file
-curl -i -X DELETE http://localhost:8080/uploads/photo.jpg
+curl -i -X DELETE http://localhost:8080/files/photo.jpg
 
 # Delete again (already gone) -> 404
-curl -i -X DELETE http://localhost:8080/uploads/photo.jpg</pre>
+curl -i -X DELETE http://localhost:8080/files/photo.jpg</pre>
         <p class="note">Replace <code>photo.jpg</code> with the actual filename. Refresh the Browse section to see it disappear.</p>
     </div>
 
@@ -119,7 +120,7 @@ curl -i -X DELETE http://localhost:8080/uploads/photo.jpg</pre>
                 <p style="font-weight:600; margin-bottom:8px;">From the browser :</p>
                 <ul>
                     <li><span class="status s-404">404</span> <a href="/does_not_exist">GET /does_not_exist</a></li>
-                    <li><span class="status s-404">404</span> <a href="/uploads/ghost.txt">GET /uploads/ghost.txt</a></li>
+                    <li><span class="status s-404">404</span> <a href="/files/ghost.txt">GET /files/ghost.txt</a></li>
                     <li><span class="status s-403">403</span> <a href="/%2e%2e/etc/passwd">Path traversal</a></li>
                 </ul>
             </div>
@@ -129,24 +130,24 @@ curl -i -X DELETE http://localhost:8080/uploads/photo.jpg</pre>
 curl -i -X POST -d "test" \
   http://localhost:8080/
 
-# 413 - Body too large (> 10KB)
+# 413 - Body larger than client_max_body_size
 curl -i -X POST \
-  -d "$(python3 -c "print('A'*20000)")" \
-  http://localhost:8080/uploads/big.txt
+  -d "$(python3 -c "print('A'*3000000)")" \
+  http://localhost:8080/upload
 
 # 400 - Null byte in URI
 curl -i http://localhost:8080/%00test
 
 # 403 - DELETE a directory
 curl -i -X DELETE \
-  http://localhost:8080/uploads/</pre>
+  http://localhost:8080/files/</pre>
             </div>
         </div>
     </div>
 
 </div>
 
-<footer>webserv 42 &mdash; upload demo &mdash; config: sandbox/upload_demo/test.conf</footer>
+<footer>webserv 42 &mdash; upload demo &mdash; config: config/full.conf</footer>
 
 </body>
 </html>
