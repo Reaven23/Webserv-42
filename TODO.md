@@ -10,14 +10,16 @@
 - Check: si upload on sans path
 - Check: si ligne hors sujet 
 - Pre fill index/root dans location si vide (en prenant celui du server parent)
+- Check: missing '}'
+
 
 ### To Do
 - fix no server block (commentaire dans no_server_block.conf pris en compte)
-- wrong file (missing ';' or '}')
+- wrong file (missing ';')
 - gérer les { retour de ligne
 - throw quand erreur dans le parsing
-- check cgi (extension valide)
-- error_page (code limités)
+- check cgi (extension valide) -- nginx
+- error_page (code limités) 
 - Nettoyer en retirant //// TEMP
 
 ### Questions

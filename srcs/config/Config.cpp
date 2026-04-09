@@ -95,6 +95,8 @@ std::string Config::extractBlock(const std::string& content, std::string::size_t
 			--brackets;
 		++i;
 	}
+	if (brackets > 0)
+		throw std::runtime_error("missing a bracket");
 
 	std::string block = content.substr(open + 1, i - open - 2);
 	pos = i;
