@@ -134,6 +134,11 @@ void Server::_handleRequest(int clientFd) {
 void Server::_handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
 
+    // if !isRequestComplete -> error
+    // else if request == cgi -> CGI process
+    // else -> setResponse()
+
+
     client->isRequestComplete() ? client->setResponse()
                                 : client->setErrorResponse();
 

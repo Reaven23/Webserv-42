@@ -61,4 +61,5 @@ class Client {
     bool    isResponseComplete() const;
     bool    isKeepAlive() const;
     void    logResponse() const;
+    // void handleCGI(Server *server);
 };

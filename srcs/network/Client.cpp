@@ -56,6 +56,15 @@ void Client::setErrorResponse() {
 void Client::setLastActivity() { _lastActivity = time(NULL); };
 
 // Public methods
+
+// void Client::handleCGI(Server *server) {
+//  cgi.pipe
+//  cgi.register
+//  fork
+//  si process enfant: close read end du pipe + dup2 + CgiHandleRequest + execve avec F_CLOSE
+//  si parent: close write end du pipe + wait pid
+//}
+
 void Client::accept(int serverFd) {
     socklen_t addrLen = sizeof(_addr);
 
