@@ -12,10 +12,12 @@
 
 #include "../../includes/http/HttpRequest.hpp"
 #include "../../includes/http/HttpResponse.hpp"
+#include "./Server.hpp"
 
 const int KEEP_ALIVE_TIMEOUT = 60;
 
 class ServerConfig;
+class Server;
 
 class Client {
    private:
@@ -48,6 +50,7 @@ class Client {
     // Setters
     void setResponse();
     void setErrorResponse();
+    void setCGIResponse(Server* server);
     void setLastActivity();
 
     // Methods
@@ -60,6 +63,6 @@ class Client {
     bool    isRequestError() const;
     bool    isResponseComplete() const;
     bool    isKeepAlive() const;
+    bool    isCGIRequest() const;
     void    logResponse() const;
-    // void handleCGI(Server *server);
 };

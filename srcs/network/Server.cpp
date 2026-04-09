@@ -38,6 +38,8 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
+vector<int> &Server::getCgis() { return (_cgis); };
+
 // Private methods
 void Server::_remove(int clientFd) {
     map<int, Client *>::const_iterator it = _clients.find(clientFd);
@@ -106,6 +108,8 @@ void Server::_handleNewClient() {
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
         Logger::error(string("epoll_ctl() (client): ") + strerror(errno));
         close(clientFd);
+        delete client;
+        return;
     }
 
     _clients[clientFd] = client;
@@ -134,13 +138,12 @@ void Server::_handleRequest(int clientFd) {
 void Server::_handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
 
-    // if !isRequestComplete -> error
-    // else if request == cgi -> CGI process
-    // else -> setResponse()
-
-
-    client->isRequestComplete() ? client->setResponse()
-                                : client->setErrorResponse();
+    if (client->isRequestError())
+        client->setErrorResponse();
+    else if (client->isCGIRequest())
+        client->setCGIResponse(this);
+    else
+        client->setResponse();
 
     if (client->send() == -1) return;
 

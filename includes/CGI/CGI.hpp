@@ -3,17 +3,15 @@
 #include "../network/Server.hpp"
 
 class CGI {
-  public:
+   public:
     CGI(Server *server);
     ~CGI(void);
     HttpResponse handleRequest();
-    void pipe();
-    int *getPipe();
-    void registerPipe(int *pipe);
+    void         pipe();
+    int         *getPipe();
+    bool         registerPipe();
 
-
-  private :
-    int _pipe[2];
+   private:
+    int     _pipe[2];
     Server *_server;
-
 };
