@@ -10,7 +10,6 @@
 #include <iostream>
 #include <sstream>
 
-#include "../../includes/Webserv.hpp"
 #include "../../includes/network/Client.hpp"
 #include "../../includes/network/helpers.hpp"
 #include "../../includes/utils/Logger.hpp"
@@ -38,6 +37,8 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
+map<int, Client *> Server::getClients() { return (_clients); };
+
 // Private methods
 void Server::_remove(int clientFd) {
     map<int, Client *>::const_iterator it = _clients.find(clientFd);
@@ -61,7 +62,7 @@ void Server::_clear() {
     _clients.clear();
 };
 
-void Server::_closeIdleConnections() {
+void Server::closeIdleConnections() {
     time_t                             now = time(NULL);
     map<int, Client *>::const_iterator it = _clients.begin();
     while (it != _clients.end()) {
@@ -74,7 +75,7 @@ void Server::_closeIdleConnections() {
     }
 };
 
-void Server::_handleNewClient() {
+void Server::handleNewClient() {
     int serverFd = getFd();
 
     Client *client = new Client(&_config);
@@ -111,7 +112,7 @@ void Server::_handleNewClient() {
     _clients[clientFd] = client;
 };
 
-void Server::_handleRequest(int clientFd) {
+void Server::handleRequest(int clientFd) {
     Client *client = _clients[clientFd];
 
     if (client->read() <= 0) return;
@@ -131,7 +132,7 @@ void Server::_handleRequest(int clientFd) {
     }
 };
 
-void Server::_handleResponse(int clientFd) {
+void Server::handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
 
     // if !isRequestComplete -> error
@@ -165,36 +166,8 @@ void Server::_handleResponse(int clientFd) {
     }
 };
 
-void Server::_startEventLoop() {
-    epoll_event eventQueue[MAX_EVENTS];
-
-    while (true) {
-        int nbEvents =
-            epoll_wait(_epollFd, eventQueue, MAX_EVENTS, EPOLL_BLCK_TIME);
-        if (nbEvents == -1) {
-            Logger::error(string("epollWait(): ") + strerror(errno));
-            break;
-        }
-
-        _closeIdleConnections();
-
-        // Loop through events
-        for (int i = 0; i < nbEvents; i++) {
-            int      fd = eventQueue[i].data.fd;
-            uint32_t events = eventQueue[i].events;
-
-            if (fd == _socket.getFd())
-                _handleNewClient();
-            else if (events & EPOLLIN)
-                _handleRequest(fd);
-            else if (events & EPOLLOUT)
-                _handleResponse(fd);
-        }
-    }
-}
-
 // Public methods
-void Server::run() {
+void Server::setup() {
     int serverFd = getFd();
 
     epoll_event serverEvent = {};
@@ -202,7 +175,7 @@ void Server::run() {
     serverEvent.data.fd = serverFd;
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
-        throw runtime_error(string("epollAddServer() (server): Fatal error ") +
+        throw runtime_error(string("epoll_ctl() (server): Fatal error ") +
                             strerror(errno));
     }
 
@@ -213,6 +186,4 @@ void Server::run() {
     ss << " listening on port ";
     ss << _socket.getPort();
     Logger::info(ss.str());
-
-    _startEventLoop();
 }
