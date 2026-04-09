@@ -3,32 +3,32 @@
 // Constructors
 
 ServerConfig::ServerConfig(void)
-    : _listens(),
-      _server_name(""),
-      _root(""),
-      _index(""),
-      _client_max_body_size(1048576u),  //// 1 MB
-      _error_pages(),
-      _locations() {}
+	:	_listens(),
+		_server_name(""),
+		_root(""),
+		_index(""),
+		_client_max_body_size(1048576u),  //// 1 MB
+		_error_pages(),
+		_locations() {}
 
 ServerConfig::ServerConfig(const ServerConfig& other)
-    : _listens(other._listens),
-      _server_name(other._server_name),
-      _root(other._root),
-      _index(other._index),
-      _client_max_body_size(other._client_max_body_size),
-      _error_pages(other._error_pages),
-      _locations(other._locations) {}
+	:	_listens(other._listens),
+		_server_name(other._server_name),
+		_root(other._root),
+		_index(other._index),
+		_client_max_body_size(other._client_max_body_size),
+		_error_pages(other._error_pages),
+_locations(other._locations) {}
 
 ServerConfig::~ServerConfig(void) {}
 
 // Setters
 
 void ServerConfig::addListen(const std::string& host, int port) {
-    ListenEntry toAdd;
-    toAdd.host = host;
-    toAdd.port = port;
-    _listens.push_back(toAdd);
+	ListenEntry toAdd;
+	toAdd.host = host;
+	toAdd.port = port;
+	_listens.push_back(toAdd);
 }
 
 void ServerConfig::setServerName(const std::string& name) { _server_name = name; }
@@ -47,13 +47,13 @@ const std::vector<ListenEntry>& ServerConfig::getListens() const { return _liste
 
 //// TEMP, for compile (until network uses getListens() / ListenEntry)
 std::string ServerConfig::getHost() const {
-    if (_listens.empty()) return "";
-    return _listens[0].host;
+	if (_listens.empty()) return "";
+	return _listens[0].host;
 }
 
 int ServerConfig::getPort() const {
-    if (_listens.empty()) return 0;
-    return _listens[0].port;
+	if (_listens.empty()) return 0;
+	return _listens[0].port;
 }
 
 //// end TEMP
@@ -72,17 +72,25 @@ std::vector<LocationConfig>& ServerConfig::getLocations() { return _locations; }
 
 const std::vector<LocationConfig>& ServerConfig::getLocations() const { return _locations; }
 
+void ServerConfig::applyLocationDefaults() {
+	for (size_t locationIndex = 0; locationIndex < _locations.size(); locationIndex++) {
+		LocationConfig& location = _locations[locationIndex];
+		if (location.getRoot().empty()) location.setRoot(_root);
+		if (location.getIndex().empty()) location.setIndex(_index);
+	}
+}
+
 // Operator
 
 ServerConfig& ServerConfig::operator=(const ServerConfig& other) {
-    if (this != &other) {
-        _listens = other._listens;
+	if (this != &other) {
+		_listens = other._listens;
 		_server_name = other._server_name;
-        _root = other._root;
-        _index = other._index;
-        _client_max_body_size = other._client_max_body_size;
-        _error_pages = other._error_pages;
-        _locations = other._locations;
-    }
-    return *this;
+		_root = other._root;
+		_index = other._index;
+		_client_max_body_size = other._client_max_body_size;
+		_error_pages = other._error_pages;
+		_locations = other._locations;
+	}
+	return *this;
 }

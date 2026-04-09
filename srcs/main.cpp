@@ -14,7 +14,12 @@ int main(int argc, char* argv[]) {
 
     Config config;
 
-    config.parse(argv[1]);
+	try {
+		config.parse(argv[1]);
+	} catch (std::exception& e) {
+		Logger::error("Parsing error: " + std::string(e.what()));
+		return (1);
+	}
 
 	config.print();////
 
