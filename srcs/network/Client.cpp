@@ -102,12 +102,7 @@ void Client::setErrorResponse() {
 };
 
 void Client::setNotImplementedResponse() {
-    _response.setStatus(501, "Not Implemented").setBody("Not Implemented");
-    ostringstream cl;
-    cl << _response.body.size();
-    _response.setHeader("Content-Type", "text/plain")
-        .setHeader("Content-Length", cl.str())
-        .setHeader("Connection", "close");
+    _response = IHttpHandler::errorResponse(501, "Not Implemented", _serverConfig);
 }
 
 void Client::setCGIResponse(Server* server) {
