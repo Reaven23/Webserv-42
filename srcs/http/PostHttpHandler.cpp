@@ -144,15 +144,15 @@ std::string PostHttpHandler::_sanitizeFilename(const std::string& raw) {
 
 HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     if (request.uri.empty() || request.uri[0] != '/')
-        return _errorResponse(400, "Bad Request", _serverConfig);
+        return errorResponse(400, "Bad Request", _serverConfig);
 
     std::string decoded = _percentDecode(request.uri);
     if (decoded.empty())
-        return _errorResponse(400, "Bad Request", _serverConfig);
+        return errorResponse(400, "Bad Request", _serverConfig);
 
     std::string cleanUri = _normalizePath(decoded);
     if (cleanUri.empty())
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
 
     HttpRequest sanitized = request;
     sanitized.uri = cleanUri;
@@ -177,20 +177,20 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     if (_serverConfig != NULL) {
         size_t maxBody = _serverConfig->getClientMaxBodySize();
         if (maxBody > 0 && request.body.size() > maxBody)
-            return _errorResponse(413, "Payload Too Large", _serverConfig);
+            return errorResponse(413, "Payload Too Large", _serverConfig);
     }
 
     if (location == NULL || !location->hasUploadDirective() ||
         !location->getUploadEnabled())
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
 
     std::string uploadDir = location->getUploadPath();
     if (uploadDir.empty())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     struct stat dirStat = {};
     if (stat(uploadDir.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode))
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     std::map<std::string, std::string>::const_iterator ctIt =
         request.headers.find("content-type");
@@ -202,7 +202,7 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
             ctv.compare(0, 19, "multipart/form-data") == 0) {
             isMultipartRequest = true;
             if (!_extractBoundary(ctv, boundary))
-                return _errorResponse(400, "Bad Request", _serverConfig);
+                return errorResponse(400, "Bad Request", _serverConfig);
         }
     }
 
@@ -211,9 +211,9 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
         std::vector<UploadedFile> files =
             _parseMultipart(request.body, boundary, malformedMultipart);
         if (malformedMultipart)
-            return _errorResponse(400, "Bad Request", _serverConfig);
+            return errorResponse(400, "Bad Request", _serverConfig);
         if (files.empty())
-            return _errorResponse(400, "Bad Request", _serverConfig);
+            return errorResponse(400, "Bad Request", _serverConfig);
 
         std::ostringstream resultBody;
         for (size_t i = 0; i < files.size(); ++i) {
@@ -222,14 +222,14 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
             std::ofstream out(filePath.c_str(),
                               std::ios::out | std::ios::binary | std::ios::trunc);
             if (!out.is_open())
-                return _errorResponse(500, "Internal Server Error", _serverConfig);
+                return errorResponse(500, "Internal Server Error", _serverConfig);
 
             out.write(files[i].data.c_str(),
                       static_cast<std::streamsize>(files[i].data.size()));
             if (!out.good()) {
                 out.close();
                 std::remove(filePath.c_str());
-                return _errorResponse(500, "Internal Server Error", _serverConfig);
+                return errorResponse(500, "Internal Server Error", _serverConfig);
             }
             out.close();
 
@@ -264,14 +264,14 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     std::ofstream outFile(filePath.c_str(),
                           std::ios::out | std::ios::binary | std::ios::trunc);
     if (!outFile.is_open())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     outFile.write(request.body.c_str(),
                   static_cast<std::streamsize>(request.body.size()));
     if (!outFile.good()) {
         outFile.close();
         std::remove(filePath.c_str());
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
     }
     outFile.close();
 

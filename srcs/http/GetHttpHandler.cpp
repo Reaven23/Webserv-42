@@ -87,7 +87,7 @@ HttpResponse GetHttpHandler::_autoindexResponse(const std::string& dirPath,
                                                   const std::string& uri) {
     DIR* dir = opendir(dirPath.c_str());
     if (dir == NULL)
-        return _errorResponse(500, "Internal Server Error", NULL);
+        return errorResponse(500, "Internal Server Error", NULL);
 
     std::string uriSlash = uri;
     if (uriSlash.empty() || uriSlash[uriSlash.size() - 1] != '/')
@@ -175,15 +175,15 @@ std::string GetHttpHandler::_resolvePath(const HttpRequest& request,
 
 HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
     if (request.uri.empty() || request.uri[0] != '/')
-        return _errorResponse(400, "Bad Request", _serverConfig);
+        return errorResponse(400, "Bad Request", _serverConfig);
 
     std::string decoded = _percentDecode(request.uri);
     if (decoded.empty())
-        return _errorResponse(400, "Bad Request", _serverConfig);
+        return errorResponse(400, "Bad Request", _serverConfig);
 
     std::string cleanUri = _normalizePath(decoded);
     if (cleanUri.empty())
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
 
     HttpRequest sanitized = request;
     sanitized.uri = cleanUri;
@@ -213,26 +213,26 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
 
     struct stat st = {};
     if (!_fileExists(path, &st))
-        return _errorResponse(404, "Not Found", _serverConfig);
+        return errorResponse(404, "Not Found", _serverConfig);
     if (S_ISDIR(st.st_mode)) {
         if (location != NULL &&
             location->getAutoindexState() == LocationConfig::AUTOINDEX_ON)
             return _autoindexResponse(path, sanitized.uri);
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
     }
     if (!S_ISREG(st.st_mode))
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
     if (!_isReadableFile(path))
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
 
     std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     std::ostringstream body;
     body << file.rdbuf();
     if (!file.good() && !file.eof())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     HttpResponse response(200, "OK");
     response.setBody(body.str());

@@ -5,8 +5,10 @@
 #include <iostream>
 #include <sstream>
 
+#include "../../includes/CGI/CGI.hpp"
 #include "../../includes/config/LocationConfig.hpp"
 #include "../../includes/config/ServerConfig.hpp"
+#include "../../includes/http/IHttpHandler.hpp"
 #include "../../includes/utils/Logger.hpp"
 
 using namespace std;
@@ -109,11 +111,20 @@ void Client::setNotImplementedResponse() {
 }
 
 void Client::setCGIResponse(Server* server) {
-    //  cgi.pipe
-    //  cgi.register
-    //  fork
+    CGI cgi(server);
+
+    if (!cgi.resolvePath(_request.request)) {
+        int code = cgi.getErrorCode();
+        std::string reason = (code == 404) ? "Not Found" : "Forbidden";
+        _response = IHttpHandler::errorResponse(code, reason, _serverConfig);
+        return;
+    }
+
+    //  TODO: cgi.pipe
+    //  TODO: cgi.register
+    //  TODO: fork
     //  si process enfant: close read end du pipe + dup2 + CgiHandleRequest +
-    //  execve avec F_CLOSE
+    //  execve avec cgi.getScriptPath()
     //  si parent: close write end du pipe + wait pid
     setResponse();
 };

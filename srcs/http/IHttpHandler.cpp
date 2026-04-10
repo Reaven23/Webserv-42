@@ -29,7 +29,7 @@ const LocationConfig* IHttpHandler::_findLocation(
     return best;
 }
 
-HttpResponse IHttpHandler::_errorResponse(int code, const std::string& reason,
+HttpResponse IHttpHandler::errorResponse(int code, const std::string& reason,
                                            const ServerConfig* serverConfig) {
     if (serverConfig != NULL) {
         const std::map<int, std::string>& errorPages =
