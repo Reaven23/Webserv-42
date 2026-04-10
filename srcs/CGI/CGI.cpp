@@ -12,13 +12,19 @@
 using namespace std;
 
 // Constructor
-CGI::CGI(Server *server) : _server(server), _pipe{-1}, _errorCode(0){};
+CGI::CGI(Server *server, Client *client)
+    : _server(server), _client(client), _errorCode(0) {
+    _pipe[0] = -1;
+    _pipe[1] = -1;
+};
 
 // Destructor
 CGI::~CGI(){};
 
 // Getters
 int CGI::getErrorCode() const { return _errorCode; }
+
+int *CGI::getPipe() { return (_pipe); };
 
 const string &CGI::getScriptPath() const { return _scriptPath; }
 
@@ -87,14 +93,14 @@ bool CGI::pipe() {
     }
 
     // register pipe read-end to server instance
-    _server->getCgis().push_back(_pipe[0]);
+    _client->getCgiFds().push_back(_pipe[0]);
 
     return (true);
 };
 
 // Public method
 void CGI::close(int fd) {
-    vector<int>           cgis = _server->getCgis();
+    vector<int>           cgis = _client->getCgiFds();
     vector<int>::iterator it = find(cgis.begin(), cgis.end(), fd);
 
     if (it != cgis.end()) {

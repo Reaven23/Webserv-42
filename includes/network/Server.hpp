@@ -23,7 +23,6 @@ class Server {
     int                    _epollFd;
     ServerSocket           _socket;
     std::map<int, Client*> _clients;
-    std::vector<int>       _cgis;
 
     // Methods
     void _remove(int clientFd);
@@ -49,7 +48,6 @@ class Server {
 
     ServerSocket const& getSocket();
     int                 getFd() const;
-    std::vector<int>&   getCgis();
 
     std::map<int, Client*> getClients();
 

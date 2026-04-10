@@ -37,7 +37,6 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-vector<int>       &Server::getCgis() { return (_cgis); };
 map<int, Client *> Server::getClients() { return (_clients); };
 
 // Private methods

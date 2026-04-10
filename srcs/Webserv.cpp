@@ -66,6 +66,16 @@ void Webserv::_runEventLoop() const {
                             (*itServer)->handleRequest(fd);
                         else if (events & EPOLLOUT)
                             (*itServer)->handleResponse(fd);
+                    } else if (events & EPOLLIN) {
+                        // CGI
+                        vector<int>& cgiFds = itClient->second->getCgiFds();
+                        vector<int>::const_iterator itCgiFds;
+                        for (itCgiFds = cgiFds.begin();
+                             itCgiFds != cgiFds.end(); itCgiFds++) {
+                            if (*itCgiFds == fd) {
+                                (*itServer)->handleResponse(fd);
+                            }
+                        }
                     }
                 }
             }

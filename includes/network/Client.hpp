@@ -33,6 +33,7 @@ class Client {
 
     // Attributes
     int                 _fd;
+    std::vector<int>    _cgisFds;
     sockaddr_in         _addr;
     std::string         _buffer;
     ParsedHttpRequest   _request;
@@ -49,6 +50,7 @@ class Client {
 
     // Getters
     int                      getFd() const;
+    std::vector<int>&        getCgiFds();
     std::string&             getBuffer();
     std::string              getIp() const;
     ParsedHttpRequest const& getRequest();
@@ -75,4 +77,3 @@ class Client {
     bool    isSupportedCgi(Server* server) const;
     void    logResponse() const;
 };
-

@@ -2,6 +2,7 @@
 
 #include <sys/wait.h>
 
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 
@@ -68,6 +69,8 @@ Client::~Client() { close(_fd); };
 // Getters
 int Client::getFd() const { return (_fd); };
 
+vector<int>& Client::getCgiFds() { return (_cgisFds); };
+
 string& Client::getBuffer() { return (_buffer); };
 
 string Client::getIp() const {
@@ -107,7 +110,7 @@ void Client::setNotImplementedResponse() {
 }
 
 void Client::setCGIResponse(Server* server) {
-    CGI cgi(server);
+    CGI cgi(server, this);
 
     if (!cgi.resolvePath(_request.request)) {
         int         code = cgi.getErrorCode();

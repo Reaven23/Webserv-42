@@ -8,7 +8,7 @@
 
 class CGI {
    public:
-    CGI(Server *server);
+    CGI(Server *server, Client *client);
     ~CGI(void);
 
     bool               resolvePath(const HttpRequest &request);
@@ -26,6 +26,7 @@ class CGI {
    private:
     int         _pipe[2];
     Server     *_server;
+    Client     *_client;
     std::string _scriptPath;
     int         _errorCode;
 };
