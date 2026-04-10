@@ -11,14 +11,17 @@ class CGI {
     CGI(Server *server);
     ~CGI(void);
 
-    bool                resolvePath(const HttpRequest &request);
-    int                 getErrorCode() const;
-    const std::string  &getScriptPath() const;
+    bool               resolvePath(const HttpRequest &request);
+    int                getErrorCode() const;
+    const std::string &getScriptPath() const;
 
+    // Methods
     HttpResponse handleRequest();
-    void         pipe();
-    int         *getPipe();
-    bool         registerPipe();
+    bool         pipe();
+    void         close(int fd);
+
+    // Getters
+    int *getPipe();
 
    private:
     int         _pipe[2];

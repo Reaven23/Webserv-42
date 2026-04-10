@@ -42,8 +42,8 @@ class Server {
     ~Server();
 
     // Getters
-    std::string const& getName();
-    ServerConfig const &getConfig();
+    std::string const&  getName();
+    ServerConfig const& getConfig();
 
     int getEpollFd() const;
 
@@ -64,4 +64,3 @@ class Server {
 
     void closeIdleConnections();
 };
-

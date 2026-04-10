@@ -1,6 +1,6 @@
 #include "../../includes/network/Client.hpp"
 
-#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <sstream>
@@ -102,25 +102,66 @@ void Client::setErrorResponse() {
 };
 
 void Client::setNotImplementedResponse() {
-    _response = IHttpHandler::errorResponse(501, "Not Implemented", _serverConfig);
+    _response =
+        IHttpHandler::errorResponse(501, "Not Implemented", _serverConfig);
 }
 
 void Client::setCGIResponse(Server* server) {
     CGI cgi(server);
 
     if (!cgi.resolvePath(_request.request)) {
-        int code = cgi.getErrorCode();
+        int         code = cgi.getErrorCode();
         std::string reason = (code == 404) ? "Not Found" : "Forbidden";
         _response = IHttpHandler::errorResponse(code, reason, _serverConfig);
         return;
     }
 
-    //  TODO: cgi.pipe
-    //  TODO: cgi.register
-    //  TODO: fork
-    //  si process enfant: close read end du pipe + dup2 + CgiHandleRequest +
-    //  execve avec cgi.getScriptPath()
-    //  si parent: close write end du pipe + wait pid
+    // TODO: setResponse 500;
+    if (!cgi.pipe()) return;
+
+    int readFd = cgi.getPipe()[0];
+    int writeFd = cgi.getPipe()[1];
+
+    pid_t pid;
+    if ((pid = fork()) == -1) {
+        Logger::error(string("fork(): ") + strerror(errno));
+        cgi.close(readFd);
+        cgi.close(writeFd);
+        // TODO: setResponse 500;
+    };
+
+    if (pid == 0) {
+        cgi.close(readFd);
+        if (dup2(writeFd, STDOUT_FILENO) == -1) {
+            Logger::error(string("dup2(): ") + strerror(errno));
+            cgi.close(writeFd);
+            // TODO: setResponse 500;
+            // TODO: quel code de sortie ?;
+            exit(1);
+        };
+        cgi.close(writeFd);
+
+        // TODO:: env vars + execve() avec flag pour fermer les fds;
+    } else {
+        cgi.close(writeFd);
+
+        char    buffer[4096];
+        string  output;
+        ssize_t bytes;
+
+        while ((bytes = ::read(readFd, buffer, sizeof(buffer)) > 0)) {
+            output.append(buffer, bytes);
+        }
+
+        if (bytes == -1) {
+            Logger::error(string("read(): ") + strerror(errno));
+            // TODO: setResponse 500;
+        }
+
+        cgi.close(readFd);
+        waitpid(pid, NULL, WNOHANG);
+    }
+    setLastActivity();
     setResponse();
 };
 
@@ -215,7 +256,6 @@ ssize_t Client::send() {
     return (bytes);
 }
 
-
 void Client::reset() {
     _buffer.erase(0, _request.consumed);
 
@@ -247,18 +287,15 @@ bool Client::isCGIRequest(Server* server) const {
         return false;
     const LocationConfig* location =
         _findBestLocation(server->getConfig(), _request.request.uri);
-    if (location == 0 || !location->hasCgiExtension())
-        return false;
+    if (location == 0 || !location->hasCgiExtension()) return false;
     return _endsWith(_request.request.uri, location->getCgiExtension());
 }
 
 bool Client::isSupportedCgi(Server* server) const {
-    if (server == 0)
-        return false;
+    if (server == 0) return false;
     const LocationConfig* location =
         _findBestLocation(server->getConfig(), _request.request.uri);
-    if (location == 0)
-        return false;
+    if (location == 0) return false;
     return location->getCgiExtension() == ".py";
 }
 

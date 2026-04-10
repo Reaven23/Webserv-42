@@ -37,7 +37,7 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-vector<int> &Server::getCgis() { return (_cgis); };
+vector<int>       &Server::getCgis() { return (_cgis); };
 map<int, Client *> Server::getClients() { return (_clients); };
 
 // Private methods
@@ -172,13 +172,9 @@ void Server::handleResponse(int clientFd) {
     }
 };
 
-
-
 // Public methods
-ServerConfig const &Server::getConfig() {
-  return (_config);
-}
-void Server::setup() {
+ServerConfig const &Server::getConfig() { return (_config); }
+void                Server::setup() {
     int serverFd = getFd();
 
     epoll_event serverEvent = {};
@@ -187,7 +183,7 @@ void Server::setup() {
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
         throw runtime_error(string("epoll_ctl() (server): Fatal error ") +
-                            strerror(errno));
+                                           strerror(errno));
     }
 
     stringstream ss;
