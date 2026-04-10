@@ -28,14 +28,11 @@ class Server {
     // Methods
     void _remove(int clientFd);
     void _clear();
-<<<<<<< HEAD
-=======
     void _closeIdleConnections();
     void _handleNewClient();
     void _handleRequest(int clientFd);
     void _handleResponse(int clientFd);
     void _startEventLoop();
->>>>>>> 8ad88154ed510007698c56b7b6ce3b733e1d362f
 
    public:
     // Constructors
@@ -45,20 +42,15 @@ class Server {
     ~Server();
 
     // Getters
-<<<<<<< HEAD
     std::string const& getName();
+    ServerConfig const &getConfig();
 
     int getEpollFd() const;
 
-=======
-    std::string const&  getName();
-    int                 getEpollFd() const;
->>>>>>> 8ad88154ed510007698c56b7b6ce3b733e1d362f
     ServerSocket const& getSocket();
     int                 getFd() const;
     std::vector<int>&   getCgis();
 
-<<<<<<< HEAD
     std::map<int, Client*> getClients();
 
     // Methods
@@ -71,8 +63,5 @@ class Server {
     void handleResponse(int clientFd);
 
     void closeIdleConnections();
-=======
-    // Methods
-    void run();
->>>>>>> 8ad88154ed510007698c56b7b6ce3b733e1d362f
 };
+

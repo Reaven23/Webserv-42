@@ -5,10 +5,56 @@
 #include <iostream>
 #include <sstream>
 
+#include "../../includes/config/LocationConfig.hpp"
 #include "../../includes/config/ServerConfig.hpp"
 #include "../../includes/utils/Logger.hpp"
 
 using namespace std;
+
+bool Client::_locationMatchesUri(const std::string& locationPath,
+                                 const std::string& uri) {
+    if (locationPath.empty()) {
+        return false;
+    }
+    if (uri.compare(0, locationPath.size(), locationPath) != 0) {
+        return false;
+    }
+    if (locationPath == "/") {
+        return true;
+    }
+    if (uri.size() == locationPath.size()) {
+        return true;
+    }
+    return uri[locationPath.size()] == '/';
+}
+
+const LocationConfig* Client::_findBestLocation(const ServerConfig& config,
+                                                const std::string&  uri) {
+    const std::vector<LocationConfig>& locations = config.getLocations();
+    const LocationConfig*              best = 0;
+    size_t                             bestLen = 0;
+
+    std::vector<LocationConfig>::const_iterator it = locations.begin();
+    for (; it != locations.end(); ++it) {
+        const std::string& path = it->getPath();
+        if (!_locationMatchesUri(path, uri)) {
+            continue;
+        }
+        if (path.size() > bestLen) {
+            best = &(*it);
+            bestLen = path.size();
+        }
+    }
+    return best;
+}
+
+bool Client::_endsWith(const std::string& value, const std::string& suffix) {
+    if (suffix.size() > value.size()) {
+        return false;
+    }
+    return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
+           0;
+}
 
 // Constructors
 Client::Client(const ServerConfig* serverConfig)
@@ -53,6 +99,15 @@ void Client::setErrorResponse() {
         .setBody("Bad request");
 };
 
+void Client::setNotImplementedResponse() {
+    _response.setStatus(501, "Not Implemented").setBody("Not Implemented");
+    ostringstream cl;
+    cl << _response.body.size();
+    _response.setHeader("Content-Type", "text/plain")
+        .setHeader("Content-Length", cl.str())
+        .setHeader("Connection", "close");
+}
+
 void Client::setCGIResponse(Server* server) {
     //  cgi.pipe
     //  cgi.register
@@ -60,6 +115,7 @@ void Client::setCGIResponse(Server* server) {
     //  si process enfant: close read end du pipe + dup2 + CgiHandleRequest +
     //  execve avec F_CLOSE
     //  si parent: close write end du pipe + wait pid
+    setResponse();
 };
 
 void Client::setLastActivity() { _lastActivity = time(NULL); };
@@ -153,6 +209,7 @@ ssize_t Client::send() {
     return (bytes);
 }
 
+
 void Client::reset() {
     _buffer.erase(0, _request.consumed);
 
@@ -179,7 +236,40 @@ bool Client::isKeepAlive() const {
     return (false);
 }
 
-bool Client::isCGIRequest() const { return (_request.cgi); }
+bool Client::isCGIRequest(Server* server) const {
+    if (server == 0) {
+        return false;
+    }
+    if (_request.status != OK) {
+        return false;
+    }
+    if (_request.request.uri.empty()) {
+        return false;
+    }
+
+    const ServerConfig& serverConfig = server->getConfig();
+    const LocationConfig* location =
+        _findBestLocation(serverConfig, _request.request.uri);
+    if (location == 0 || !location->hasCgiExtension()) {
+        return false;
+    }
+
+    const std::string& cgiExt = location->getCgiExtension();
+    if (cgiExt != ".py") {
+        return false;
+    }
+
+    return _endsWith(_request.request.uri, cgiExt);
+}
+
+bool Client::isUnsupportedCgiRequest(Server* server) const {
+    if (!server || _request.status != OK || _request.request.uri.empty()) return false;
+    const LocationConfig* loc =
+        _findBestLocation(server->getConfig(), _request.request.uri);
+    if (!loc || !loc->hasCgiExtension()) return false;
+    const std::string& ext = loc->getCgiExtension();
+    return _endsWith(_request.request.uri, ext) && ext != ".py";
+}
 
 void Client::logResponse() const {
     ostringstream                       os;

@@ -37,11 +37,8 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-<<<<<<< HEAD
-map<int, Client *> Server::getClients() { return (_clients); };
-=======
 vector<int> &Server::getCgis() { return (_cgis); };
->>>>>>> 8ad88154ed510007698c56b7b6ce3b733e1d362f
+map<int, Client *> Server::getClients() { return (_clients); };
 
 // Private methods
 void Server::_remove(int clientFd) {
@@ -141,12 +138,15 @@ void Server::handleRequest(int clientFd) {
 void Server::handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
 
-    if (client->isRequestError())
+    if (client->isRequestError()) {
         client->setErrorResponse();
-    else if (client->isCGIRequest())
+    } else if (client->isUnsupportedCgiRequest(this)) {
+        client->setNotImplementedResponse();
+    } else if (client->isCGIRequest(this)) {
         client->setCGIResponse(this);
-    else
+    } else {
         client->setResponse();
+    }
 
     if (client->send() == -1) return;
 
@@ -171,7 +171,12 @@ void Server::handleResponse(int clientFd) {
     }
 };
 
+
+
 // Public methods
+ServerConfig const &Server::getConfig() {
+  return (_config);
+}
 void Server::setup() {
     int serverFd = getFd();
 

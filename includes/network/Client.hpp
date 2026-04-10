@@ -18,11 +18,18 @@ const int KEEP_ALIVE_TIMEOUT = 60;
 
 class ServerConfig;
 class Server;
+class LocationConfig;
 
 class Client {
    private:
     Client(Client const& other);
     Client& operator=(Client const& other);
+
+    static bool _locationMatchesUri(const std::string& locationPath,
+                                    const std::string& uri);
+    static const LocationConfig* _findBestLocation(const ServerConfig& config,
+                                                   const std::string&  uri);
+    static bool _endsWith(const std::string& value, const std::string& suffix);
 
     // Attributes
     int                 _fd;
@@ -50,6 +57,7 @@ class Client {
     // Setters
     void setResponse();
     void setErrorResponse();
+    void setNotImplementedResponse();
     void setCGIResponse(Server* server);
     void setLastActivity();
 
@@ -63,6 +71,8 @@ class Client {
     bool    isRequestError() const;
     bool    isResponseComplete() const;
     bool    isKeepAlive() const;
-    bool    isCGIRequest() const;
+    bool    isCGIRequest(Server* server) const;
+    bool    isUnsupportedCgiRequest(Server* server) const;
     void    logResponse() const;
 };
+

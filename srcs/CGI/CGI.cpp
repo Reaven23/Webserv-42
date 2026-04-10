@@ -1,5 +1,4 @@
 #include "../../includes/CGI/CGI.hpp"
-
 #include "../../includes/utils/Logger.hpp"
 
 // Constructor
