@@ -141,7 +141,45 @@ void Client::setCGIResponse(Server* server) {
         };
         cgi.close(writeFd);
 
-        // TODO:: env vars + execve() avec flag pour fermer les fds;
+        // Build CGI environment variables
+        const ServerConfig &conf = server->getConfig();
+        ostringstream       portStr;
+        portStr << conf.getPort();
+
+        string methodStr;
+        switch (_request.request.method) {
+            case GET:    methodStr = "GET"; break;
+            case POST:   methodStr = "POST"; break;
+            case DELETE: methodStr = "DELETE"; break;
+            default:     methodStr = "UNKNOWN"; break;
+        }
+
+        map<string, string>::const_iterator ctIt =
+            _request.request.headers.find("content-type");
+        map<string, string>::const_iterator clIt =
+            _request.request.headers.find("content-length");
+
+        vector<string> envStrs;
+        envStrs.push_back("GATEWAY_INTERFACE=CGI/1.1");
+        envStrs.push_back("SERVER_PROTOCOL=HTTP/1.1");
+        envStrs.push_back("REQUEST_METHOD=" + methodStr);
+        envStrs.push_back("SCRIPT_NAME=" + _request.request.uri);
+        envStrs.push_back("SCRIPT_FILENAME=" + cgi.getScriptPath());
+        envStrs.push_back("QUERY_STRING=" + _request.request.queryString);
+        envStrs.push_back("SERVER_NAME=" + conf.getServerName());
+        envStrs.push_back("SERVER_PORT=" + portStr.str());
+        envStrs.push_back("REDIRECT_STATUS=200");
+        if (ctIt != _request.request.headers.end())
+            envStrs.push_back("CONTENT_TYPE=" + ctIt->second);
+        if (clIt != _request.request.headers.end())
+            envStrs.push_back("CONTENT_LENGTH=" + clIt->second);
+
+        vector<char *> envp;
+        for (size_t i = 0; i < envStrs.size(); ++i)
+            envp.push_back(const_cast<char *>(envStrs[i].c_str()));
+        envp.push_back(NULL);
+
+        // TODO: execve();
     } else {
         cgi.close(writeFd);
 
