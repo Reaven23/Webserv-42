@@ -140,10 +140,11 @@ void Server::handleResponse(int clientFd) {
 
     if (client->isRequestError()) {
         client->setErrorResponse();
-    } else if (client->isUnsupportedCgiRequest(this)) {
-        client->setNotImplementedResponse();
     } else if (client->isCGIRequest(this)) {
-        client->setCGIResponse(this);
+        if (client->isSupportedCgi(this))
+            client->setCGIResponse(this);
+        else
+            client->setNotImplementedResponse();
     } else {
         client->setResponse();
     }

@@ -72,7 +72,7 @@ class Client {
     bool    isResponseComplete() const;
     bool    isKeepAlive() const;
     bool    isCGIRequest(Server* server) const;
-    bool    isUnsupportedCgiRequest(Server* server) const;
+    bool    isSupportedCgi(Server* server) const;
     void    logResponse() const;
 };
 

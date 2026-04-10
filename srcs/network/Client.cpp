@@ -237,38 +237,23 @@ bool Client::isKeepAlive() const {
 }
 
 bool Client::isCGIRequest(Server* server) const {
-    if (server == 0) {
+    if (server == 0 || _request.status != OK || _request.request.uri.empty())
         return false;
-    }
-    if (_request.status != OK) {
-        return false;
-    }
-    if (_request.request.uri.empty()) {
-        return false;
-    }
-
-    const ServerConfig& serverConfig = server->getConfig();
     const LocationConfig* location =
-        _findBestLocation(serverConfig, _request.request.uri);
-    if (location == 0 || !location->hasCgiExtension()) {
+        _findBestLocation(server->getConfig(), _request.request.uri);
+    if (location == 0 || !location->hasCgiExtension())
         return false;
-    }
-
-    const std::string& cgiExt = location->getCgiExtension();
-    if (cgiExt != ".py") {
-        return false;
-    }
-
-    return _endsWith(_request.request.uri, cgiExt);
+    return _endsWith(_request.request.uri, location->getCgiExtension());
 }
 
-bool Client::isUnsupportedCgiRequest(Server* server) const {
-    if (!server || _request.status != OK || _request.request.uri.empty()) return false;
-    const LocationConfig* loc =
+bool Client::isSupportedCgi(Server* server) const {
+    if (server == 0)
+        return false;
+    const LocationConfig* location =
         _findBestLocation(server->getConfig(), _request.request.uri);
-    if (!loc || !loc->hasCgiExtension()) return false;
-    const std::string& ext = loc->getCgiExtension();
-    return _endsWith(_request.request.uri, ext) && ext != ".py";
+    if (location == 0)
+        return false;
+    return location->getCgiExtension() == ".py";
 }
 
 void Client::logResponse() const {
