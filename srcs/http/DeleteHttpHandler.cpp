@@ -1,6 +1,4 @@
 #include "../../includes/http/DeleteHttpHandler.hpp"
-#include "../../includes/config/LocationConfig.hpp"
-#include "../../includes/config/ServerConfig.hpp"
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -8,25 +6,28 @@
 #include <cstdio>
 #include <sstream>
 
+#include "../../includes/config/LocationConfig.hpp"
+#include "../../includes/config/ServerConfig.hpp"
+
+using namespace std;
+
 DeleteHttpHandler::DeleteHttpHandler(const ServerConfig* serverConfig)
     : _serverConfig(serverConfig) {}
 
-std::string DeleteHttpHandler::_resolvePath(const HttpRequest& request,
-                                            const ServerConfig* serverConfig,
-                                            const LocationConfig* location) {
-    std::string baseRoot = ".";
+string DeleteHttpHandler::_resolvePath(const HttpRequest&    request,
+                                       const ServerConfig*   serverConfig,
+                                       const LocationConfig* location) {
+    string baseRoot = ".";
 
     if (serverConfig != NULL && !serverConfig->getRoot().empty())
         baseRoot = serverConfig->getRoot();
 
-    std::string relPath = request.uri;
+    string relPath = request.uri;
 
     if (location != NULL) {
-        if (!location->getRoot().empty())
-            baseRoot = location->getRoot();
+        if (!location->getRoot().empty()) baseRoot = location->getRoot();
         relPath = request.uri.substr(location->getPath().size());
-        if (relPath.empty() || relPath[0] != '/')
-            relPath = "/" + relPath;
+        if (relPath.empty() || relPath[0] != '/') relPath = "/" + relPath;
     }
 
     return baseRoot + relPath;
@@ -37,11 +38,11 @@ HttpResponse DeleteHttpHandler::handle(const HttpRequest& request) const {
     if (request.uri.empty() || request.uri[0] != '/')
         return _errorResponse(400, "Bad Request", _serverConfig);
 
-    std::string decoded = _percentDecode(request.uri);
+    string decoded = _percentDecode(request.uri);
     if (decoded.empty())
         return _errorResponse(400, "Bad Request", _serverConfig);
 
-    std::string cleanUri = _normalizePath(decoded);
+    string cleanUri = _normalizePath(decoded);
     if (cleanUri.empty())
         return _errorResponse(403, "Forbidden", _serverConfig);
 
@@ -49,11 +50,12 @@ HttpResponse DeleteHttpHandler::handle(const HttpRequest& request) const {
     sanitized.uri = cleanUri;
 
     // --- Location matching ---
-    const LocationConfig* location = _findLocation(sanitized.uri, _serverConfig);
+    const LocationConfig* location =
+        _findLocation(sanitized.uri, _serverConfig);
 
     // --- Methods check ---
     if (location != NULL) {
-        const std::vector<std::string>& methods = location->getMethods();
+        const vector<string>& methods = location->getMethods();
         if (!methods.empty()) {
             bool allowed = false;
             for (size_t i = 0; i < methods.size(); ++i) {
@@ -62,13 +64,12 @@ HttpResponse DeleteHttpHandler::handle(const HttpRequest& request) const {
                     break;
                 }
             }
-            if (!allowed)
-                return _methodNotAllowedResponse(methods);
+            if (!allowed) return _methodNotAllowedResponse(methods);
         }
     }
 
     // --- Resolve filesystem path ---
-    std::string path = _resolvePath(sanitized, _serverConfig, location);
+    string path = _resolvePath(sanitized, _serverConfig, location);
 
     // --- Check file exists ---
     struct stat st = {};
@@ -88,18 +89,18 @@ HttpResponse DeleteHttpHandler::handle(const HttpRequest& request) const {
         return _errorResponse(403, "Forbidden", _serverConfig);
 
     // --- Delete the file ---
-    if (std::remove(path.c_str()) != 0)
+    if (remove(path.c_str()) != 0)
         return _errorResponse(500, "Internal Server Error", _serverConfig);
 
     // --- Success ---
     HttpResponse response(200, "OK");
 
-    std::ostringstream bodyMsg;
+    ostringstream bodyMsg;
     bodyMsg << "File deleted: " << sanitized.uri;
     response.setBody(bodyMsg.str());
     response.setHeader("Content-Type", "text/plain");
 
-    std::ostringstream cl;
+    ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
     response.setHeader("Connection", "close");

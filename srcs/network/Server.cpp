@@ -120,6 +120,9 @@ void Server::handleRequest(int clientFd) {
     client->parse();
 
     if (client->isRequestComplete() || client->isRequestError()) {
+        client->isRequestComplete() ? client->setResponse()
+                                    : client->setErrorResponse();
+
         epoll_event ev = {};
         ev.events = EPOLLOUT;
         ev.data.fd = clientFd;
@@ -134,9 +137,6 @@ void Server::handleRequest(int clientFd) {
 
 void Server::handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
-
-    client->isRequestComplete() ? client->setResponse()
-                                : client->setErrorResponse();
 
     if (client->send() == -1) return;
 

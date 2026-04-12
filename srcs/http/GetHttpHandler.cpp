@@ -1,7 +1,4 @@
 #include "../../includes/http/GetHttpHandler.hpp"
-#include "../../includes/config/LocationConfig.hpp"
-#include "../../includes/config/ServerConfig.hpp"
-
 
 #include <dirent.h>
 #include <sys/stat.h>
@@ -11,36 +8,39 @@
 #include <fstream>
 #include <sstream>
 
+#include "../../includes/config/LocationConfig.hpp"
+#include "../../includes/config/ServerConfig.hpp"
+
+using namespace std;
+
 GetHttpHandler::GetHttpHandler(const ServerConfig* serverConfig)
     : _serverConfig(serverConfig) {}
 
-HttpResponse GetHttpHandler::_textResponse(int code, const std::string& reason,
-                                          const std::string& body) {
+HttpResponse GetHttpHandler::_textResponse(int code, const string& reason,
+                                           const string& body) {
     HttpResponse response(code, reason);
     response.setBody(body);
     response.setHeader("Content-Type", "text/plain");
 
-    std::ostringstream contentLength;
+    ostringstream contentLength;
     contentLength << response.body.size();
     response.setHeader("Content-Length", contentLength.str());
     response.setHeader("Connection", "close");
     return response;
 }
 
-std::string GetHttpHandler::_extensionLower(const std::string& path) {
-    std::string::size_type dot = path.find_last_of('.');
-    if (dot == std::string::npos || dot + 1 >= path.size())
-        return "";
-    std::string ext = path.substr(dot);
+string GetHttpHandler::_extensionLower(const string& path) {
+    string::size_type dot = path.find_last_of('.');
+    if (dot == string::npos || dot + 1 >= path.size()) return "";
+    string ext = path.substr(dot);
     for (size_t i = 0; i < ext.size(); ++i) {
-        ext[i] = static_cast<char>(
-            std::tolower(static_cast<unsigned char>(ext[i])));
+        ext[i] = static_cast<char>(tolower(static_cast<unsigned char>(ext[i])));
     }
     return ext;
 }
 
-std::string GetHttpHandler::_contentTypeFromPath(const std::string& path) {
-    std::string ext = _extensionLower(path);
+string GetHttpHandler::_contentTypeFromPath(const string& path) {
+    string ext = _extensionLower(path);
     if (ext == ".html") return "text/html";
     if (ext == ".css") return "text/css";
     if (ext == ".js") return "application/javascript";
@@ -53,14 +53,18 @@ std::string GetHttpHandler::_contentTypeFromPath(const std::string& path) {
     return "application/octet-stream";
 }
 
-HttpResponse GetHttpHandler::_redirectResponse(int code,
-                                               const std::string& target) {
-    std::string reason;
-    if (code == 301)      reason = "Moved Permanently";
-    else if (code == 302) reason = "Found";
-    else if (code == 307) reason = "Temporary Redirect";
-    else if (code == 308) reason = "Permanent Redirect";
-    else                  reason = "Found";
+HttpResponse GetHttpHandler::_redirectResponse(int code, const string& target) {
+    string reason;
+    if (code == 301)
+        reason = "Moved Permanently";
+    else if (code == 302)
+        reason = "Found";
+    else if (code == 307)
+        reason = "Temporary Redirect";
+    else if (code == 308)
+        reason = "Permanent Redirect";
+    else
+        reason = "Found";
 
     HttpResponse response(code, reason);
     response.setHeader("Location", target);
@@ -68,43 +72,41 @@ HttpResponse GetHttpHandler::_redirectResponse(int code,
                      "</a></body></html>");
     response.setHeader("Content-Type", "text/html");
 
-    std::ostringstream cl;
+    ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
     response.setHeader("Connection", "close");
     return response;
 }
 
-bool GetHttpHandler::_fileExists(const std::string& path, struct stat* st) {
+bool GetHttpHandler::_fileExists(const string& path, struct stat* st) {
     return stat(path.c_str(), st) == 0;
 }
 
-bool GetHttpHandler::_isReadableFile(const std::string& path) {
+bool GetHttpHandler::_isReadableFile(const string& path) {
     return access(path.c_str(), R_OK) == 0;
 }
 
-HttpResponse GetHttpHandler::_autoindexResponse(const std::string& dirPath,
-                                                  const std::string& uri) {
+HttpResponse GetHttpHandler::_autoindexResponse(const string& dirPath,
+                                                const string& uri) {
     DIR* dir = opendir(dirPath.c_str());
-    if (dir == NULL)
-        return _errorResponse(500, "Internal Server Error", NULL);
+    if (dir == NULL) return _errorResponse(500, "Internal Server Error", NULL);
 
-    std::string uriSlash = uri;
+    string uriSlash = uri;
     if (uriSlash.empty() || uriSlash[uriSlash.size() - 1] != '/')
         uriSlash += "/";
 
-    std::ostringstream html;
+    ostringstream html;
     html << "<html>\r\n<head><title>Index of " << uriSlash
          << "</title></head>\r\n<body>\r\n<h1>Index of " << uriSlash
          << "</h1><hr>\r\n<pre>\r\n";
 
     struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {
-        std::string name = entry->d_name;
-        if (name == ".")
-            continue;
+        string name = entry->d_name;
+        if (name == ".") continue;
 
-        std::string fullPath = dirPath + "/" + name;
+        string      fullPath = dirPath + "/" + name;
         struct stat st = {};
         bool isDir = (stat(fullPath.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
 
@@ -122,24 +124,25 @@ HttpResponse GetHttpHandler::_autoindexResponse(const std::string& dirPath,
     response.setBody(html.str());
     response.setHeader("Content-Type", "text/html");
 
-    std::ostringstream cl;
+    ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
     response.setHeader("Connection", "close");
     return response;
 }
 
-std::string GetHttpHandler::_resolvePath(const HttpRequest& request,
-                                         const ServerConfig* serverConfig,
-                                         const LocationConfig* location) {
-    std::string uriPath = request.uri;
+string GetHttpHandler::_resolvePath(const HttpRequest&    request,
+                                    const ServerConfig*   serverConfig,
+                                    const LocationConfig* location) {
+    string uriPath = request.uri;
 
-    std::string baseRoot = ".";
-    std::string baseIndex = "index.html";
-    std::string relPath = uriPath;
+    string baseRoot = ".";
+    string baseIndex = "index.html";
+    string relPath = uriPath;
 
     if (serverConfig != NULL) {
-        if (!serverConfig->getRoot().empty()) baseRoot = serverConfig->getRoot();
+        if (!serverConfig->getRoot().empty())
+            baseRoot = serverConfig->getRoot();
         if (!serverConfig->getIndex().empty())
             baseIndex = serverConfig->getIndex();
     }
@@ -153,12 +156,11 @@ std::string GetHttpHandler::_resolvePath(const HttpRequest& request,
 
     if (uriPath == "/") return baseRoot + "/" + baseIndex;
 
-    std::string direct = baseRoot + relPath;
+    string      direct = baseRoot + relPath;
     struct stat st = {};
-    if (_fileExists(direct, &st) && S_ISREG(st.st_mode))
-        return direct;
+    if (_fileExists(direct, &st) && S_ISREG(st.st_mode)) return direct;
 
-    std::string indexCandidate = direct;
+    string indexCandidate = direct;
     if (!indexCandidate.empty() &&
         indexCandidate[indexCandidate.size() - 1] != '/')
         indexCandidate += "/";
@@ -166,7 +168,7 @@ std::string GetHttpHandler::_resolvePath(const HttpRequest& request,
     if (_fileExists(indexCandidate, &st) && S_ISREG(st.st_mode))
         return indexCandidate;
 
-    std::string htmlCandidate = direct + ".html";
+    string htmlCandidate = direct + ".html";
     if (_fileExists(htmlCandidate, &st) && S_ISREG(st.st_mode))
         return htmlCandidate;
 
@@ -177,21 +179,22 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
     if (request.uri.empty() || request.uri[0] != '/')
         return _errorResponse(400, "Bad Request", _serverConfig);
 
-    std::string decoded = _percentDecode(request.uri);
+    string decoded = _percentDecode(request.uri);
     if (decoded.empty())
         return _errorResponse(400, "Bad Request", _serverConfig);
 
-    std::string cleanUri = _normalizePath(decoded);
+    string cleanUri = _normalizePath(decoded);
     if (cleanUri.empty())
         return _errorResponse(403, "Forbidden", _serverConfig);
 
     HttpRequest sanitized = request;
     sanitized.uri = cleanUri;
 
-    const LocationConfig* location = _findLocation(sanitized.uri, _serverConfig);
+    const LocationConfig* location =
+        _findLocation(sanitized.uri, _serverConfig);
 
     if (location != NULL) {
-        const std::vector<std::string>& methods = location->getMethods();
+        const vector<string>& methods = location->getMethods();
         if (!methods.empty()) {
             bool allowed = false;
             for (size_t i = 0; i < methods.size(); ++i) {
@@ -200,8 +203,7 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
                     break;
                 }
             }
-            if (!allowed)
-                return _methodNotAllowedResponse(methods);
+            if (!allowed) return _methodNotAllowedResponse(methods);
         }
 
         if (location->hasRedirect())
@@ -209,7 +211,7 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
                                      location->getRedirectTarget());
     }
 
-    std::string path = _resolvePath(sanitized, _serverConfig, location);
+    string path = _resolvePath(sanitized, _serverConfig, location);
 
     struct stat st = {};
     if (!_fileExists(path, &st))
@@ -225,11 +227,11 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
     if (!_isReadableFile(path))
         return _errorResponse(403, "Forbidden", _serverConfig);
 
-    std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
+    ifstream file(path.c_str(), ios::in | ios::binary);
     if (!file.is_open())
         return _errorResponse(500, "Internal Server Error", _serverConfig);
 
-    std::ostringstream body;
+    ostringstream body;
     body << file.rdbuf();
     if (!file.good() && !file.eof())
         return _errorResponse(500, "Internal Server Error", _serverConfig);
@@ -238,7 +240,7 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
     response.setBody(body.str());
     response.setHeader("Content-Type", _contentTypeFromPath(path));
 
-    std::ostringstream contentLength;
+    ostringstream contentLength;
     contentLength << response.body.size();
     response.setHeader("Content-Length", contentLength.str());
     response.setHeader("Connection", "close");

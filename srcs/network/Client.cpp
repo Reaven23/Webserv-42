@@ -12,7 +12,11 @@ using namespace std;
 
 // Constructors
 Client::Client(const ServerConfig* serverConfig)
-    : _fd(-1), _lastActivity(time(NULL)), _serverConfig(serverConfig){};
+    : _fd(-1),
+      _sendBuffer(""),
+      _sendOffset(0),
+      _lastActivity(time(NULL)),
+      _serverConfig(serverConfig) {}
 
 // Destructor
 Client::~Client() { close(_fd); };
@@ -39,7 +43,6 @@ time_t Client::getLastActivity() const { return (_lastActivity); };
 // Setters
 void Client::setResponse() {
     _response = HttpResponse::handleRequest(_request.request, _serverConfig);
-    _response.setHeader("Connection", "close");
 };
 
 void Client::setErrorResponse() {
@@ -68,19 +71,9 @@ ssize_t Client::read() {
     oss << "Request from client '" << _fd << "|" << getIp() << "'";
     Logger::info(oss.str());
 
-    // Temp buffer to store the received data.
     char    tmp[1024] = {0};
     ssize_t bytes = recv(_fd, tmp, sizeof(tmp), 0);
 
-    // recv() reads data sent by the client through the connection.
-    //   - clientSocket   : the client fd (returned by accept, NOT the listening
-    //   socket!)
-    //   - buffer         : where to store the received bytes
-    //   - sizeof(buffer) : max number of bytes to read (to avoid buffer
-    //   overflow)
-    //   - 0              : no flags (default behavior, blocking)
-    // Returns the number of bytes read, 0 if the client disconnected, -1 on
-    // error
     if (bytes > 0) {
         _buffer.append(tmp, bytes);
     } else if (bytes == 0) {  // client has ended the connection
@@ -114,19 +107,13 @@ void Client::parse() { _request = HttpRequest::parse(_buffer); }
 
 ssize_t Client::send() {
     ostringstream os;
-    string        raw = _response.toString();
 
-    if (raw.empty()) {
-        os << "send(): Failed to send data to client '" << _fd << "|" << getIp()
-           << "'" << endl;
-        os << strerror(errno);
-
-        Logger::error(os.str());
-
-        return (-1);
+    if (_sendBuffer.empty()) {
+        _sendBuffer = _response.toString();
     }
 
-    ssize_t bytes = ::send(_fd, raw.c_str(), raw.size(), 0);
+    ssize_t bytes = ::send(_fd, _sendBuffer.c_str() + _sendOffset,
+                           _sendBuffer.size() - _sendOffset, 0);
 
     if (bytes == -1) {
         os << "send(): Failed to send data to client '" << _fd << "|" << getIp()
@@ -134,9 +121,10 @@ ssize_t Client::send() {
         os << strerror(errno);
 
         Logger::error(os.str());
-
         return (-1);
     }
+
+    _sendOffset += bytes;
 
     setLastActivity();
 
@@ -145,6 +133,8 @@ ssize_t Client::send() {
 
 void Client::reset() {
     _buffer.erase(0, _request.consumed);
+    _sendBuffer = "";
+    _sendOffset = 0;
 
     _request.consumed = 0;
     _request.status = INCOMPLETE;
@@ -157,7 +147,9 @@ bool Client::isRequestComplete() const { return (_request.status == OK); };
 
 bool Client::isRequestError() const { return (_request.status == ERROR); };
 
-bool Client::isResponseComplete() const { return (true); };
+bool Client::isResponseComplete() const {
+    return (!_sendBuffer.empty() && _sendOffset >= _sendBuffer.size());
+};
 
 bool Client::isKeepAlive() const {
     map<string, string>                 headers = _request.request.headers;
