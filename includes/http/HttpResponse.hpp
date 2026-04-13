@@ -22,6 +22,6 @@ class HttpResponse {
     HttpResponse& setStatus(int code, const std::string& reason);
     HttpResponse& setBody(std::string const& body);
 
-    static HttpResponse handleRequest(const HttpRequest& request,
+    static HttpResponse handleRequest(const HttpRequest&  request,
                                       const ServerConfig* serverConfig = 0);
 };

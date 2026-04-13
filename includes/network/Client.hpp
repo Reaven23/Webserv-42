@@ -28,6 +28,8 @@ class Client {
     std::string         _buffer;
     ParsedHttpRequest   _request;
     HttpResponse        _response;
+    std::string         _sendBuffer;
+    size_t              _sendOffset;
     time_t              _lastActivity;
     const ServerConfig* _serverConfig;
 
