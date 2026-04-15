@@ -103,6 +103,32 @@ std::string Config::extractBlock(const std::string& content, std::string::size_t
 	return block;
 }
 
+std::string::size_type Config::nextLocationLineIndex(const std::string& block, std::string::size_type from) {
+	std::string::size_type at = from;
+	while (at < block.length()) {
+		std::string::size_type lineEnd = block.find('\n', at);
+		if (lineEnd == std::string::npos) 
+			return std::string::npos;
+		std::string line = trim(block.substr(at, lineEnd - at));
+		if (!line.empty() && line.find("location") == 0)
+			return at;
+		at = lineEnd + 1;
+		if (lineEnd == block.length()) 
+			break;
+	}
+	return std::string::npos;
+}
+
+static const std::string validCgiExtensions[] = { ".py", ".js" }; // Allowed cgi extensions
+
+static bool isValidCgiExtension(const std::string& ext) {
+	for (std::string::size_type i = 0; i < sizeof(validCgiExtensions) / sizeof(validCgiExtensions[0]); i++) {
+		if (ext == validCgiExtensions[i])
+			return true;
+	}
+	return false;
+}
+
 // "location /path { ... }"
 void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 	std::string::size_type pos = 0;
@@ -161,6 +187,10 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 
 		if (line.find("cgi") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(3));
+
+			if (!isValidCgiExtension(rest))
+				throw std::runtime_error("invalid cgi extension: " + rest);
+
 			loc.setCgiExtension(rest);
 			continue;
 		}
@@ -279,7 +309,9 @@ void Config::parseServerBlock(const std::string& block) {
 			if (locPath.empty()) locPath = "/";
 
 			std::string::size_type bracePos = block.find('{', startOfLine);
-			if (bracePos == std::string::npos) continue;
+			std::string::size_type nextLocLine = nextLocationLineIndex(block, pos);
+			if (bracePos == std::string::npos || (nextLocLine != std::string::npos && bracePos >= nextLocLine))
+				throw std::runtime_error("location block has no opening brace: " + line);
 			std::string inner = extractBlock(block, bracePos);
 			pos = bracePos;
 
@@ -311,9 +343,19 @@ void Config::parse(const std::string& path) {
 		// if serverPos > 0, not the first char of the line,
 		// if the char before isalnum or '_'
 		// if yes, continue (skip)
-		if (serverPos > 0 &&
-			(isalnum(content[serverPos - 1]) || content[serverPos - 1] == '_'))
+		if (serverPos > 0 && (isalnum(content[serverPos - 1]) || content[serverPos - 1] == '_'))
 			continue;
+
+		// skip "server" if in a comment
+		std::string::size_type lineStart = content.rfind('\n', serverPos);
+		if (lineStart == std::string::npos) 
+			lineStart = 0;
+		else 
+			lineStart += 1;
+		std::string::size_type hashPos = content.find('#', lineStart);
+		if (hashPos != std::string::npos && hashPos < serverPos)
+			continue;
+
 		std::string block = extractBlock(content, pos);
 		if (!block.empty()) {
 			////std::cout << "block: " << block << std::endl;
