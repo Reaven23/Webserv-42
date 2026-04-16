@@ -14,13 +14,21 @@ class IHttpHandler {
     virtual ~IHttpHandler() {}
     virtual HttpResponse handle(const HttpRequest& request) const = 0;
 
+    static HttpResponse errorResponse(int code, const std::string& reason,
+                                       const ServerConfig* serverConfig);
+
+    // Subject IV.3: route /kapouet → dir /tmp/www ⇒ /kapouet/pouic/... → /tmp/www/pouic/...
+    static std::string mapUriToFilesystemPath(const std::string& sanitizedUri,
+                                              const ServerConfig* serverConfig,
+                                              const LocationConfig* location);
+
+    static const LocationConfig* findLocation(const std::string& uri,
+                                              const ServerConfig* serverConfig);
+
+    static bool sanitizeUriPath(const std::string& uri, std::string& outClean,
+                                int& errorCode);
+
    protected:
-    static const LocationConfig* _findLocation(const std::string& uri,
-                                               const ServerConfig* serverConfig);
-
-    static HttpResponse _errorResponse(int code, const std::string& reason,
-                                        const ServerConfig* serverConfig);
-
     static HttpResponse _methodNotAllowedResponse(
         const std::vector<std::string>& allowedMethods);
 

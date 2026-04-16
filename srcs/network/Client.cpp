@@ -1,14 +1,23 @@
 #include "../../includes/network/Client.hpp"
 
-#include <sys/types.h>
-
 #include <iostream>
 #include <sstream>
 
+#include "../../includes/CGI/CGI.hpp"
+#include "../../includes/config/LocationConfig.hpp"
 #include "../../includes/config/ServerConfig.hpp"
+#include "../../includes/http/IHttpHandler.hpp"
 #include "../../includes/utils/Logger.hpp"
 
 using namespace std;
+
+bool Client::_endsWith(const std::string& value, const std::string& suffix) {
+    if (suffix.size() > value.size()) {
+        return false;
+    }
+    return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
+           0;
+}
 
 // Constructors
 Client::Client(const ServerConfig* serverConfig)
@@ -23,6 +32,8 @@ Client::~Client() { close(_fd); };
 
 // Getters
 int Client::getFd() const { return (_fd); };
+
+vector<int>& Client::getCgiFds() { return (_cgisFds); };
 
 string& Client::getBuffer() { return (_buffer); };
 
@@ -56,9 +67,40 @@ void Client::setErrorResponse() {
         .setBody("Bad request");
 };
 
+void Client::setNotImplementedResponse() {
+    _response =
+        IHttpHandler::errorResponse(501, "Not Implemented", _serverConfig);
+}
+
+void Client::setCGIResponse(Server* server) {
+    CGI cgi(server, this);
+
+    if (!cgi.resolvePath(_request.request)) {
+        int         code = cgi.getErrorCode();
+        std::string reason = "Bad Request";
+        if (code == 404)
+            reason = "Not Found";
+        else if (code == 403)
+            reason = "Forbidden";
+        _response = IHttpHandler::errorResponse(code, reason, _serverConfig);
+        return;
+    }
+
+    if (_request.request.method == GET)
+        _response = cgi.executeGet(_request.request);
+    else if (_request.request.method == POST)
+        _response = cgi.executePost(_request.request);
+    else
+        _response = IHttpHandler::errorResponse(405, "Method Not Allowed",
+                                                _serverConfig);
+
+    setLastActivity();
+};
+
 void Client::setLastActivity() { _lastActivity = time(NULL); };
 
 // Public methods
+
 void Client::accept(int serverFd) {
     socklen_t addrLen = sizeof(_addr);
 
@@ -159,6 +201,31 @@ bool Client::isKeepAlive() const {
     if (it != headers.end() && it->second == "keep-alive") return (true);
 
     return (false);
+}
+
+bool Client::isCGIRequest(Server* server) const {
+    if (server == 0 || _request.status != OK || _request.request.uri.empty())
+        return false;
+    string clean;
+    int    err = 0;
+    if (!IHttpHandler::sanitizeUriPath(_request.request.uri, clean, err))
+        return false;
+    const LocationConfig* location =
+        IHttpHandler::findLocation(clean, &server->getConfig());
+    if (location == 0 || !location->hasCgiExtension()) return false;
+    return _endsWith(clean, location->getCgiExtension());
+}
+
+bool Client::isSupportedCgi(Server* server) const {
+    if (server == 0) return false;
+    string clean;
+    int    err = 0;
+    if (!IHttpHandler::sanitizeUriPath(_request.request.uri, clean, err))
+        return false;
+    const LocationConfig* location =
+        IHttpHandler::findLocation(clean, &server->getConfig());
+    if (location == 0) return false;
+    return location->getCgiExtension() == ".py";
 }
 
 void Client::logResponse() const {

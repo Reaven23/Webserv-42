@@ -92,8 +92,9 @@ void Server::handleNewClient() {
         return;
     }
 
-    // Set new socket to non-blocking
-    if (!setSocketNonBlocking(clientFd)) {
+    // Set new socket to non-blocking + close-on-exec (pour ne pas leak les fd
+    // dans les child CGI)
+    if (!setSocketNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
         Logger::error(string("fcntl(): ") + strerror(errno));
 
         return;
@@ -107,6 +108,8 @@ void Server::handleNewClient() {
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
         Logger::error(string("epoll_ctl() (client): ") + strerror(errno));
         close(clientFd);
+        delete client;
+        return;
     }
 
     _clients[clientFd] = client;
@@ -120,8 +123,13 @@ void Server::handleRequest(int clientFd) {
     client->parse();
 
     if (client->isRequestComplete() || client->isRequestError()) {
-        client->isRequestComplete() ? client->setResponse()
-                                    : client->setErrorResponse();
+        if (client->isRequestError())
+            client->setErrorResponse();
+        else if (client->isCGIRequest(this))
+            client->isSupportedCgi(this) ? client->setCGIResponse(this)
+                                         : client->setNotImplementedResponse();
+        else
+            client->setResponse();
 
         epoll_event ev = {};
         ev.events = EPOLLOUT;
@@ -162,7 +170,8 @@ void Server::handleResponse(int clientFd) {
 };
 
 // Public methods
-void Server::setup() {
+ServerConfig const &Server::getConfig() { return (_config); }
+void                Server::setup() {
     int serverFd = getFd();
 
     epoll_event serverEvent = {};
@@ -171,7 +180,7 @@ void Server::setup() {
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
         throw runtime_error(string("epoll_ctl() (server): Fatal error ") +
-                            strerror(errno));
+                                           strerror(errno));
     }
 
     stringstream ss;

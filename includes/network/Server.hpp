@@ -8,6 +8,8 @@
 
 #define MAX_EVENTS 10
 
+class Client;
+
 class Server {
    private:
     // Default constructor is private as it makes no sense to have a server
@@ -17,17 +19,13 @@ class Server {
     // Attributes
     std::string const _name;
 
-    ServerConfig const& _config;
-
-    int _epollFd;
-
-    ServerSocket _socket;
-
+    ServerConfig const&    _config;
+    int                    _epollFd;
+    ServerSocket           _socket;
     std::map<int, Client*> _clients;
 
     // Methods
     void _remove(int clientFd);
-
     void _clear();
 
    public:
@@ -40,11 +38,12 @@ class Server {
     // Getters
     std::string const& getName();
 
+    ServerConfig const& getConfig();
+
     int getEpollFd() const;
 
     ServerSocket const& getSocket();
-
-    int getFd() const;
+    int                 getFd() const;
 
     std::map<int, Client*> getClients();
 

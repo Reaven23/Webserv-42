@@ -132,22 +132,17 @@ string PostHttpHandler::_sanitizeFilename(const string& raw) {
 }
 
 HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
-    if (request.uri.empty() || request.uri[0] != '/')
-        return _errorResponse(400, "Bad Request", _serverConfig);
-
-    string decoded = _percentDecode(request.uri);
-    if (decoded.empty())
-        return _errorResponse(400, "Bad Request", _serverConfig);
-
-    string cleanUri = _normalizePath(decoded);
-    if (cleanUri.empty())
-        return _errorResponse(403, "Forbidden", _serverConfig);
+    std::string cleanUri;
+    int         uriErr = 0;
+    if (!sanitizeUriPath(request.uri, cleanUri, uriErr))
+        return errorResponse(uriErr == 400 ? 400 : 403,
+                             uriErr == 400 ? "Bad Request" : "Forbidden",
+                             _serverConfig);
 
     HttpRequest sanitized = request;
     sanitized.uri = cleanUri;
 
-    const LocationConfig* location =
-        _findLocation(sanitized.uri, _serverConfig);
+    const LocationConfig* location = findLocation(sanitized.uri, _serverConfig);
 
     if (location != NULL) {
         const vector<string>& methods = location->getMethods();
@@ -166,20 +161,20 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     if (_serverConfig != NULL) {
         size_t maxBody = _serverConfig->getClientMaxBodySize();
         if (maxBody > 0 && request.body.size() > maxBody)
-            return _errorResponse(413, "Payload Too Large", _serverConfig);
+            return errorResponse(413, "Payload Too Large", _serverConfig);
     }
 
     if (location == NULL || !location->hasUploadDirective() ||
         !location->getUploadEnabled())
-        return _errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(403, "Forbidden", _serverConfig);
 
     string uploadDir = location->getUploadPath();
     if (uploadDir.empty())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     struct stat dirStat = {};
     if (stat(uploadDir.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode))
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     map<string, string>::const_iterator ctIt =
         request.headers.find("content-type");
@@ -191,7 +186,7 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
             ctv.compare(0, 19, "multipart/form-data") == 0) {
             isMultipartRequest = true;
             if (!_extractBoundary(ctv, boundary))
-                return _errorResponse(400, "Bad Request", _serverConfig);
+                return errorResponse(400, "Bad Request", _serverConfig);
         }
     }
 
@@ -200,9 +195,9 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
         vector<UploadedFile> files =
             _parseMultipart(request.body, boundary, malformedMultipart);
         if (malformedMultipart)
-            return _errorResponse(400, "Bad Request", _serverConfig);
+            return errorResponse(400, "Bad Request", _serverConfig);
         if (files.empty())
-            return _errorResponse(400, "Bad Request", _serverConfig);
+            return errorResponse(400, "Bad Request", _serverConfig);
 
         ostringstream resultBody;
         for (size_t i = 0; i < files.size(); ++i) {
@@ -210,16 +205,16 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
 
             ofstream out(filePath.c_str(), ios::out | ios::binary | ios::trunc);
             if (!out.is_open())
-                return _errorResponse(500, "Internal Server Error",
-                                      _serverConfig);
+                return errorResponse(500, "Internal Server Error",
+                                     _serverConfig);
 
             out.write(files[i].data.c_str(),
                       static_cast<streamsize>(files[i].data.size()));
             if (!out.good()) {
                 out.close();
-                remove(filePath.c_str());
-                return _errorResponse(500, "Internal Server Error",
-                                      _serverConfig);
+                std::remove(filePath.c_str());
+                return errorResponse(500, "Internal Server Error",
+                                     _serverConfig);
             }
             out.close();
 
@@ -252,14 +247,14 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
 
     ofstream outFile(filePath.c_str(), ios::out | ios::binary | ios::trunc);
     if (!outFile.is_open())
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        return errorResponse(500, "Internal Server Error", _serverConfig);
 
     outFile.write(request.body.c_str(),
                   static_cast<streamsize>(request.body.size()));
     if (!outFile.good()) {
         outFile.close();
-        remove(filePath.c_str());
-        return _errorResponse(500, "Internal Server Error", _serverConfig);
+        std::remove(filePath.c_str());
+        return errorResponse(500, "Internal Server Error", _serverConfig);
     }
     outFile.close();
 

@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "../includes/network/helpers.hpp"
 #include "../includes/utils/Logger.hpp"
 
 using namespace std;
@@ -66,6 +67,16 @@ void Webserv::_runEventLoop() const {
                             (*itServer)->handleRequest(fd);
                         else if (events & EPOLLOUT)
                             (*itServer)->handleResponse(fd);
+                    } else if (events & EPOLLIN) {
+                        // CGI
+                        vector<int>& cgiFds = itClient->second->getCgiFds();
+                        vector<int>::const_iterator itCgiFds;
+                        for (itCgiFds = cgiFds.begin();
+                             itCgiFds != cgiFds.end(); itCgiFds++) {
+                            if (*itCgiFds == fd) {
+                                (*itServer)->handleResponse(fd);
+                            }
+                        }
                     }
                 }
             }
@@ -79,6 +90,11 @@ void Webserv::start() {
 
     if (_epollFd == -1) {
         throw runtime_error(string("epollCreate(): Fatal error: ") +
+                            strerror(errno));
+    }
+
+    if (!setCloseOnExec(_epollFd)) {
+        throw runtime_error(string("fcntl(): Fatal error: ") +
                             strerror(errno));
     }
 
