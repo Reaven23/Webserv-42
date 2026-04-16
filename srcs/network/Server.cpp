@@ -152,7 +152,10 @@ void Server::handleRequest(int clientFd) {
 void Server::handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
 
-    if (client->send() == -1) return;
+    if (client->send() == -1) {
+        _remove(clientFd);
+        return;
+    }
 
     if (client->isResponseComplete()) {
         client->logResponse();
