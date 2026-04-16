@@ -10,15 +10,22 @@
 - Check: si upload on sans path
 - Check: si ligne hors sujet 
 - Pre fill index/root dans location si vide (en prenant celui du server parent)
+- Check: missing '}'
+
+- check cgi (extension valide)
+- gérer les { retour de ligne
+- si pas de {} pour location (cad si juste random "location" dans conf)
+- fix no server block (fix commented block server)
+
 
 ### To Do
-- fix no server block (commentaire dans no_server_block.conf pris en compte)
-- wrong file (missing ';' or '}')
-- gérer les { retour de ligne
+- wrong file (missing ';')
+
 - throw quand erreur dans le parsing
-- check cgi (extension valide)
-- error_page (code limités)
+- error_page (code limités) 
+
+- Clean code (opti, consistency, static, etc)
 - Nettoyer en retirant //// TEMP
 
 ### Questions
-- si methods vide, on autorise tout ou on stop ?
+- si methods vide (déjà géré par Request man)
