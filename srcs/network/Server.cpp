@@ -37,7 +37,7 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-map<int, Client *> Server::getClients() { return (_clients); };
+const map<int, Client *>& Server::getClients() const { return (_clients); };
 
 // Private methods
 void Server::_remove(int clientFd) {
@@ -96,7 +96,7 @@ void Server::handleNewClient() {
     // dans les child CGI)
     if (!setSocketNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
         Logger::error(string("fcntl(): ") + strerror(errno));
-
+        delete client;
         return;
     }
 
@@ -118,7 +118,10 @@ void Server::handleNewClient() {
 void Server::handleRequest(int clientFd) {
     Client *client = _clients[clientFd];
 
-    if (client->read() <= 0) return;
+    if (client->read() <= 0) {
+        _remove(clientFd);
+        return;
+    }
 
     client->parse();
 

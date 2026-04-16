@@ -118,16 +118,13 @@ ssize_t Client::read() {
 
     if (bytes > 0) {
         _buffer.append(tmp, bytes);
-    } else if (bytes == 0) {  // client has ended the connection
+    } else if (bytes == 0) {
         oss.str("");
         oss.clear();
 
         oss << "Client '" << _fd << "|" << getIp()
             << "' has ended the connection" << endl;
         Logger::info(oss.str());
-
-        close(_fd);  // automatically removes the fd from epoll interest list;
-
     } else {
         oss.str("");
         oss.clear();
@@ -137,10 +134,10 @@ ssize_t Client::read() {
         oss << strerror(errno);
 
         Logger::error(oss.str());
-        close(_fd);
     }
 
-    setLastActivity();
+    if (bytes > 0)
+        setLastActivity();
 
     return (bytes);
 }
