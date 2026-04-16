@@ -26,7 +26,6 @@ static HttpResponse _methodNotAllowedResponse() {
     ostringstream contentLength;
     contentLength << response.body.size();
     response.setHeader("Content-Length", contentLength.str());
-    response.setHeader("Connection", "close");
     return response;
 }
 

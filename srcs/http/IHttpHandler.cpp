@@ -83,7 +83,6 @@ HttpResponse IHttpHandler::errorResponse(int code, const std::string& reason,
                     ostringstream cl;
                     cl << response.body.size();
                     response.setHeader("Content-Length", cl.str());
-                    response.setHeader("Connection", "close");
                     return response;
                 }
             }
@@ -103,7 +102,6 @@ HttpResponse IHttpHandler::errorResponse(int code, const std::string& reason,
     ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
-    response.setHeader("Connection", "close");
     return response;
 }
 
@@ -123,7 +121,6 @@ HttpResponse IHttpHandler::_methodNotAllowedResponse(
     ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
-    response.setHeader("Connection", "close");
     return response;
 }
 
