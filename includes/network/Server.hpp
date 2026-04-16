@@ -3,7 +3,6 @@
 #include <map>
 
 #include "../config/ServerConfig.hpp"
-#include "./Client.hpp"
 #include "./ServerSocket.hpp"
 
 #define MAX_EVENTS 10
@@ -52,9 +51,11 @@ class Server {
 
     void handleNewClient();
 
-    void handleRequest(int Clientfd);
+    void handleRequest(int clientFd);
 
     void handleResponse(int clientFd);
+
+    void handleCGI(int clientFd, int cgiFd);
 
     void closeIdleConnections();
 };

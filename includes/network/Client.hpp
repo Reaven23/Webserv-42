@@ -12,7 +12,7 @@
 
 #include "../../includes/http/HttpRequest.hpp"
 #include "../../includes/http/HttpResponse.hpp"
-#include "./Server.hpp"
+#include "../CGI/CGI.hpp"
 
 const int KEEP_ALIVE_TIMEOUT = 60;
 
@@ -21,6 +21,59 @@ class Server;
 class LocationConfig;
 
 class Client {
+   public:
+    enum State {
+        WAITING_CGI,
+        WRITING_CGI,
+        READING_CGI,
+        SENDING_RESPONSE,
+    };
+
+    // Constructors
+    Client(int epollFd, const ServerConfig* serverConfig = 0);
+
+    // Destructor
+    ~Client();
+
+    // Getters
+    int                      getFd() const;
+    int                      getEpollFd() const;
+    State                    getState() const;
+    std::string&             getBuffer();
+    std::string              getIp() const;
+    ParsedHttpRequest const& getRequest();
+    HttpResponse&            getResponse();
+    std::map<int, CGI*>&     getCgis();
+    std::string&             getCgiBuffer();
+    time_t                   getLastActivity() const;
+
+    // Setters
+    void setResponse();
+    void setErrorResponse(int statusCode, ServerConfig const* config);
+    void initCGI(Server* server);
+    void setLastActivity();
+    void setState(State state);
+
+    // Methods
+    void    accept(int serverFd);
+    ssize_t read();
+    void    runCGI(int cgiFd);
+    void    parse();
+    ssize_t send();
+    void    clear();
+    void    reset();
+    void    switchToEpollOut() const;
+    void    appendToCGIBuffer(std::string buffer, ssize_t bytes);
+    bool    isRequestComplete() const;
+    bool    isRequestError() const;
+    bool    isResponseComplete() const;
+    bool    isKeepAlive() const;
+    bool    isCGIRequest(Server* server) const;
+    bool    isSupportedCgi(Server* server) const;
+    void    logResponse() const;
+    void    applyVersion();
+    void    applyConnectionHeader();
+
    private:
     Client(Client const& other);
     Client& operator=(Client const& other);
@@ -29,7 +82,8 @@ class Client {
 
     // Attributes
     int                 _fd;
-    std::vector<int>    _cgisFds;
+    int                 _epollFd;
+    State               _state;
     sockaddr_in         _addr;
     std::string         _buffer;
     ParsedHttpRequest   _request;
@@ -38,42 +92,7 @@ class Client {
     size_t              _sendOffset;
     time_t              _lastActivity;
     const ServerConfig* _serverConfig;
-
-   public:
-    // Constructors
-    Client(const ServerConfig* serverConfig = 0);
-
-    // Destructor
-    ~Client();
-
-    // Getters
-    int                      getFd() const;
-    std::vector<int>&        getCgiFds();
-    std::string&             getBuffer();
-    std::string              getIp() const;
-    ParsedHttpRequest const& getRequest();
-    time_t                   getLastActivity() const;
-
-    // Setters
-    void setResponse();
-    void setErrorResponse();
-    void setNotImplementedResponse();
-    void setCGIResponse(Server* server);
-    void setLastActivity();
-
-    // Methods
-    void    accept(int serverFd);
-    ssize_t read();
-    void    parse();
-    ssize_t send();
-    void    reset();
-    bool    isRequestComplete() const;
-    bool    isRequestError() const;
-    bool    isResponseComplete() const;
-    bool    isKeepAlive() const;
-    void    applyVersion();
-    void    applyConnectionHeader();
-    bool    isCGIRequest(Server* server) const;
-    bool    isSupportedCgi(Server* server) const;
-    void    logResponse() const;
+    // CGI
+    std::map<int, CGI*> _cgis;
+    std::string         _cgiBuffer;
 };

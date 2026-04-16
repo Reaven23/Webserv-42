@@ -11,7 +11,7 @@
 
 using namespace std;
 
-bool Client::_endsWith(const std::string& value, const std::string& suffix) {
+bool Client::_endsWith(const string& value, const string& suffix) {
     if (suffix.size() > value.size()) {
         return false;
     }
@@ -20,12 +20,15 @@ bool Client::_endsWith(const std::string& value, const std::string& suffix) {
 }
 
 // Constructors
-Client::Client(const ServerConfig* serverConfig)
+Client::Client(int epollFd, const ServerConfig* serverConfig)
     : _fd(-1),
+      _epollFd(epollFd),
+      _state(WAITING_CGI),
       _sendBuffer(""),
       _sendOffset(0),
       _lastActivity(time(NULL)),
-      _serverConfig(serverConfig) {}
+      _serverConfig(serverConfig),
+      _cgiBuffer("") {}
 
 // Destructor
 Client::~Client() { close(_fd); };
@@ -33,7 +36,9 @@ Client::~Client() { close(_fd); };
 // Getters
 int Client::getFd() const { return (_fd); };
 
-vector<int>& Client::getCgiFds() { return (_cgisFds); };
+int Client::getEpollFd() const { return (_epollFd); }
+
+Client::State Client::getState() const { return (_state); }
 
 string& Client::getBuffer() { return (_buffer); };
 
@@ -49,6 +54,12 @@ string Client::getIp() const {
 
 ParsedHttpRequest const& Client::getRequest() { return (_request); };
 
+map<int, CGI*>& Client::getCgis() { return (_cgis); };
+
+string& Client::getCgiBuffer() { return (_cgiBuffer); };
+
+HttpResponse& Client::getResponse() { return (_response); }
+
 time_t Client::getLastActivity() const { return (_lastActivity); };
 
 // Setters
@@ -56,49 +67,55 @@ void Client::setResponse() {
     _response = HttpResponse::handleRequest(_request.request, _serverConfig);
 };
 
-void Client::setErrorResponse() {
-    _response.setStatus(400, "Bad Request")
-        .setBody("Bad request")
-        .setHeader("Content-Type", "text/plain");
-
-    ostringstream cl;
-    cl << _response.body.size();
-    _response.setHeader("Content-Length", cl.str());
-};
-
-void Client::setNotImplementedResponse() {
-    _response =
-        IHttpHandler::errorResponse(501, "Not Implemented", _serverConfig);
-}
-
-void Client::setCGIResponse(Server* server) {
-    CGI cgi(server, this);
-
-    if (!cgi.resolvePath(_request.request)) {
-        int         code = cgi.getErrorCode();
-        std::string reason = "Bad Request";
-        if (code == 404)
-            reason = "Not Found";
-        else if (code == 403)
+void Client::setErrorResponse(int statusCode, ServerConfig const* config) {
+    string reason = "";
+    switch (statusCode) {
+        case 400:
+            reason = "Bad Request";
+            break;
+        case 403:
             reason = "Forbidden";
-        _response = IHttpHandler::errorResponse(code, reason, _serverConfig);
-        return;
+            break;
+        case 404:
+            reason = "Not Found";
+            break;
+        case 405:
+            reason = "Method Not Allowed";
+            break;
+        case 501:
+            reason = "Not Implemented";
+            break;
+        case 500:
+        default:
+            reason = "Internal server error";
+            break;
     }
 
-    if (_request.request.method == GET)
-        _response = cgi.executeGet(_request.request);
-    else if (_request.request.method == POST)
-        _response = cgi.executePost(_request.request);
-    else
-        _response = IHttpHandler::errorResponse(405, "Method Not Allowed",
-                                                _serverConfig);
-
-    setLastActivity();
+    _response = IHttpHandler::errorResponse(statusCode, reason, config);
 };
+
+void Client::setState(Client::State state) { _state = state; }
 
 void Client::setLastActivity() { _lastActivity = time(NULL); };
 
 // Public methods
+void Client::initCGI(Server* server) {
+    CGI* cgi = new CGI(server, this);
+
+    if (!cgi->resolvePath(_request.request)) {
+        setErrorResponse(cgi->getErrorCode(), _serverConfig);
+        switchToEpollOut();
+        delete cgi;
+        return;
+    }
+
+    if (!cgi->pipe(_request.request.method)) {
+        delete cgi;
+        setErrorResponse(500, _serverConfig);
+        setState(Client::SENDING_RESPONSE);
+        switchToEpollOut();
+    }
+};
 
 void Client::accept(int serverFd) {
     socklen_t addrLen = sizeof(_addr);
@@ -135,10 +152,21 @@ ssize_t Client::read() {
         Logger::error(oss.str());
     }
 
-    if (bytes > 0)
-        setLastActivity();
+    if (bytes > 0) setLastActivity();
 
     return (bytes);
+}
+
+void Client::runCGI(int cgiFd) {
+    CGI* cgi = _cgis[cgiFd];
+
+    if (_request.request.method != GET && _request.request.method != POST) {
+        setErrorResponse(405, _serverConfig);
+        switchToEpollOut();
+        return;
+    }
+
+    cgi->run(this);
 }
 
 void Client::parse() { _request = HttpRequest::parse(_buffer); }
@@ -169,8 +197,22 @@ ssize_t Client::send() {
     return (bytes);
 }
 
+void Client::clear() {
+    map<int, CGI*>::const_iterator it;
+
+    for (it = _cgis.begin(); it != _cgis.end(); it++) {
+        if (it->second) delete it->second;
+    }
+
+    _cgis.clear();
+}
+
 void Client::reset() {
     _buffer.erase(0, _request.consumed);
+
+    _cgiBuffer.clear();
+    _state = WAITING_CGI;
+
     _sendBuffer = "";
     _sendOffset = 0;
 
@@ -180,6 +222,21 @@ void Client::reset() {
 
     _response = HttpResponse();
 };
+
+void Client::switchToEpollOut() const {
+    epoll_event event = {};
+    event.events = EPOLLOUT;
+    event.data.fd = getFd();
+    if (epoll_ctl(getEpollFd(), EPOLL_CTL_MOD, getFd(), &event) == -1) {
+        Logger::error(string("epoll_ctl() (client): Failed to "
+                             "add flag EPOLLOUT ") +
+                      strerror(errno));
+    }
+};
+
+void Client::appendToCGIBuffer(string buffer, ssize_t bytes) {
+    _cgiBuffer.append(buffer, bytes);
+}
 
 bool Client::isRequestComplete() const { return (_request.status == OK); };
 
@@ -194,27 +251,23 @@ bool Client::isKeepAlive() const {
     map<string, string>::const_iterator it = headers.find("connection");
 
     if (_request.request.version == "HTTP/1.1") {
-        if (it != headers.end() && it->second == "close")
-            return false;
+        if (it != headers.end() && it->second == "close") return false;
         return true;
     }
-    if (it != headers.end() && it->second == "keep-alive")
-        return true;
+    if (it != headers.end() && it->second == "keep-alive") return true;
     return false;
 }
 
 void Client::applyVersion() {
     const string& ver = _request.request.version;
-    if (ver == "HTTP/1.0" || ver == "HTTP/1.1")
-        _response.version = ver;
+    if (ver == "HTTP/1.0" || ver == "HTTP/1.1") _response.version = ver;
 }
 
 void Client::applyConnectionHeader() {
     bool keepAlive = isKeepAlive();
-    int  code      = _response.statusCode;
+    int  code = _response.statusCode;
 
-    if (code >= 400)
-        keepAlive = false;
+    if (code >= 400) keepAlive = false;
 
     if (keepAlive)
         _response.setHeader("Connection", "keep-alive");

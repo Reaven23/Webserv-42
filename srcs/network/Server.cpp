@@ -37,13 +37,14 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-const map<int, Client *>& Server::getClients() const { return (_clients); };
+const map<int, Client *> &Server::getClients() const { return (_clients); };
 
 // Private methods
 void Server::_remove(int clientFd) {
     map<int, Client *>::const_iterator it = _clients.find(clientFd);
 
     if (it != _clients.end() && it->second) {
+        it->second->clear();
         delete it->second;
 
         _clients.erase(it->first);
@@ -78,7 +79,7 @@ void Server::closeIdleConnections() {
 void Server::handleNewClient() {
     int serverFd = getFd();
 
-    Client *client = new Client(&_config);
+    Client *client = new Client(_epollFd, &_config);
 
     client->accept(serverFd);
 
@@ -128,26 +129,27 @@ void Server::handleRequest(int clientFd) {
 
     client->parse();
 
-    if (client->isRequestComplete() || client->isRequestError()) {
-        if (client->isRequestError())
-            client->setErrorResponse();
-        else if (client->isCGIRequest(this))
-            client->isSupportedCgi(this) ? client->setCGIResponse(this)
-                                         : client->setNotImplementedResponse();
-        else
+    if (client->isRequestError()) {
+        client->setErrorResponse(400, &_config);
+        client->switchToEpollOut();
+        client->setLastActivity();
+        return;
+    }
+
+    if (client->isRequestComplete()) {
+        if (client->isCGIRequest(this)) {
+            if (client->isSupportedCgi(this)) {
+                client->initCGI(this);
+                client->setLastActivity();
+                return;
+            }
+            client->setErrorResponse(501, &_config);
+            client->switchToEpollOut();
+            client->setLastActivity();
+        } else {
             client->setResponse();
-
-        client->applyVersion();
-        client->applyConnectionHeader();
-
-        epoll_event ev = {};
-        ev.events = EPOLLOUT;
-        ev.data.fd = clientFd;
-
-        if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, clientFd, &ev) == -1) {
-            Logger::error(string("epoll_ctl() (client): Failed to "
-                                 "add flag EPOLLOUT ") +
-                          strerror(errno));
+            client->switchToEpollOut();
+            client->setLastActivity();
         }
     }
 };
@@ -184,9 +186,17 @@ void Server::handleResponse(int clientFd) {
     }
 };
 
+void Server::handleCGI(int clientFd, int cgiFd) {
+    Client *client = _clients[clientFd];
+
+    client->runCGI(cgiFd);
+    client->setLastActivity();
+}
+
 // Public methods
 ServerConfig const &Server::getConfig() { return (_config); }
-void                Server::setup() {
+
+void Server::setup() {
     int serverFd = getFd();
 
     epoll_event serverEvent = {};
@@ -195,7 +205,7 @@ void                Server::setup() {
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
         throw runtime_error(string("epoll_ctl() (server): Fatal error ") +
-                                           strerror(errno));
+                            strerror(errno));
     }
 
     stringstream ss;
