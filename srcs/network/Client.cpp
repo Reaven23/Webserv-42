@@ -203,6 +203,12 @@ bool Client::isKeepAlive() const {
     return false;
 }
 
+void Client::applyVersion() {
+    const string& ver = _request.request.version;
+    if (ver == "HTTP/1.0" || ver == "HTTP/1.1")
+        _response.version = ver;
+}
+
 void Client::applyConnectionHeader() {
     bool keepAlive = isKeepAlive();
     int  code      = _response.statusCode;

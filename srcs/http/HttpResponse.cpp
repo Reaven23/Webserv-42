@@ -11,10 +11,11 @@
 using namespace std;
 
 // Constructors
-HttpResponse::HttpResponse() : statusCode(200), reasonPhrase("OK") {}
+HttpResponse::HttpResponse()
+    : version("HTTP/1.1"), statusCode(200), reasonPhrase("OK") {}
 
 HttpResponse::HttpResponse(int statusCode, const string& reasonPhrase)
-    : statusCode(statusCode), reasonPhrase(reasonPhrase) {}
+    : version("HTTP/1.1"), statusCode(statusCode), reasonPhrase(reasonPhrase) {}
 
 // Private methods
 static HttpResponse _methodNotAllowedResponse() {
@@ -66,7 +67,7 @@ HttpResponse HttpResponse::handleRequest(const HttpRequest&  request,
 
 string HttpResponse::toString() const {
     ostringstream oss;
-    oss << "HTTP/1.1 " << statusCode << " " << reasonPhrase << "\r\n";
+    oss << version << " " << statusCode << " " << reasonPhrase << "\r\n";
 
     map<string, string>::const_iterator it = headers.begin();
     for (; it != headers.end(); ++it) {

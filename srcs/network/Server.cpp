@@ -134,6 +134,7 @@ void Server::handleRequest(int clientFd) {
         else
             client->setResponse();
 
+        client->applyVersion();
         client->applyConnectionHeader();
 
         epoll_event ev = {};
