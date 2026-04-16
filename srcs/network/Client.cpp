@@ -57,13 +57,13 @@ void Client::setResponse() {
 };
 
 void Client::setErrorResponse() {
+    _response.setStatus(400, "Bad Request")
+        .setBody("Bad request")
+        .setHeader("Content-Type", "text/plain");
+
     ostringstream cl;
     cl << _response.body.size();
-
-    _response.setStatus(400, "Bad Request")
-        .setHeader("Content-Type", "text/plain")
-        .setHeader("Content-Length", cl.str())
-        .setBody("Bad request");
+    _response.setHeader("Content-Length", cl.str());
 };
 
 void Client::setNotImplementedResponse() {
