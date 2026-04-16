@@ -37,7 +37,7 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-map<int, Client *> Server::getClients() { return (_clients); };
+const map<int, Client *>& Server::getClients() const { return (_clients); };
 
 // Private methods
 void Server::_remove(int clientFd) {

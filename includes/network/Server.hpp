@@ -45,7 +45,7 @@ class Server {
     ServerSocket const& getSocket();
     int                 getFd() const;
 
-    std::map<int, Client*> getClients();
+    const std::map<int, Client*>& getClients() const;
 
     // Methods
     void setup();

@@ -58,7 +58,7 @@ void Webserv::_runEventLoop() const {
                 }
 
                 // Check for request or response event
-                map<int, Client*> clientsMap = (*itServer)->getClients();
+                const map<int, Client*>& clientsMap = (*itServer)->getClients();
                 map<int, Client*>::const_iterator itClient;
                 for (itClient = clientsMap.begin();
                      itClient != clientsMap.end(); itClient++) {
