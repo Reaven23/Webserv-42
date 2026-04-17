@@ -230,7 +230,6 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
         ostringstream cl;
         cl << response.body.size();
         response.setHeader("Content-Length", cl.str());
-        response.setHeader("Connection", "close");
         return response;
     }
 
@@ -270,6 +269,5 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
-    response.setHeader("Connection", "close");
     return response;
 }

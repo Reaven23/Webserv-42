@@ -134,6 +134,9 @@ void Server::handleRequest(int clientFd) {
         else
             client->setResponse();
 
+        client->applyVersion();
+        client->applyConnectionHeader();
+
         epoll_event ev = {};
         ev.events = EPOLLOUT;
         ev.data.fd = clientFd;
@@ -149,7 +152,10 @@ void Server::handleRequest(int clientFd) {
 void Server::handleResponse(int clientFd) {
     Client *client = _clients[clientFd];
 
-    if (client->send() == -1) return;
+    if (client->send() == -1) {
+        _remove(clientFd);
+        return;
+    }
 
     if (client->isResponseComplete()) {
         client->logResponse();

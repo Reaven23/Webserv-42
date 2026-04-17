@@ -165,7 +165,6 @@ HttpResponse CGI::_parseOutput(const string &output) {
         response.setHeader(key, val);
     }
 
-    response.setHeader("Connection", "close");
     return response;
 }
 

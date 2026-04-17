@@ -25,7 +25,6 @@ HttpResponse GetHttpHandler::_textResponse(int code, const string& reason,
     ostringstream contentLength;
     contentLength << response.body.size();
     response.setHeader("Content-Length", contentLength.str());
-    response.setHeader("Connection", "close");
     return response;
 }
 
@@ -75,7 +74,6 @@ HttpResponse GetHttpHandler::_redirectResponse(int code, const string& target) {
     ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
-    response.setHeader("Connection", "close");
     return response;
 }
 
@@ -127,7 +125,6 @@ HttpResponse GetHttpHandler::_autoindexResponse(const string& dirPath,
     ostringstream cl;
     cl << response.body.size();
     response.setHeader("Content-Length", cl.str());
-    response.setHeader("Connection", "close");
     return response;
 }
 
@@ -236,6 +233,5 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
     ostringstream contentLength;
     contentLength << response.body.size();
     response.setHeader("Content-Length", contentLength.str());
-    response.setHeader("Connection", "close");
     return response;
 }

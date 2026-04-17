@@ -57,14 +57,13 @@ void Client::setResponse() {
 };
 
 void Client::setErrorResponse() {
+    _response.setStatus(400, "Bad Request")
+        .setBody("Bad request")
+        .setHeader("Content-Type", "text/plain");
+
     ostringstream cl;
     cl << _response.body.size();
-
-    _response.setStatus(400, "Bad Request")
-        .setHeader("Content-Type", "text/plain")
-        .setHeader("Content-Length", cl.str())
-        .setHeader("Connection", "close")
-        .setBody("Bad request");
+    _response.setHeader("Content-Length", cl.str());
 };
 
 void Client::setNotImplementedResponse() {
@@ -191,13 +190,36 @@ bool Client::isResponseComplete() const {
 };
 
 bool Client::isKeepAlive() const {
-    map<string, string>                 headers = _request.request.headers;
-    map<string, string>::const_iterator it;
+    const map<string, string>&          headers = _request.request.headers;
+    map<string, string>::const_iterator it = headers.find("connection");
 
-    it = headers.find("connection");
-    if (it != headers.end() && it->second == "keep-alive") return (true);
+    if (_request.request.version == "HTTP/1.1") {
+        if (it != headers.end() && it->second == "close")
+            return false;
+        return true;
+    }
+    if (it != headers.end() && it->second == "keep-alive")
+        return true;
+    return false;
+}
 
-    return (false);
+void Client::applyVersion() {
+    const string& ver = _request.request.version;
+    if (ver == "HTTP/1.0" || ver == "HTTP/1.1")
+        _response.version = ver;
+}
+
+void Client::applyConnectionHeader() {
+    bool keepAlive = isKeepAlive();
+    int  code      = _response.statusCode;
+
+    if (code >= 400)
+        keepAlive = false;
+
+    if (keepAlive)
+        _response.setHeader("Connection", "keep-alive");
+    else
+        _response.setHeader("Connection", "close");
 }
 
 bool Client::isCGIRequest(Server* server) const {

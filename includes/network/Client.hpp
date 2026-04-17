@@ -71,6 +71,8 @@ class Client {
     bool    isRequestError() const;
     bool    isResponseComplete() const;
     bool    isKeepAlive() const;
+    void    applyVersion();
+    void    applyConnectionHeader();
     bool    isCGIRequest(Server* server) const;
     bool    isSupportedCgi(Server* server) const;
     void    logResponse() const;
