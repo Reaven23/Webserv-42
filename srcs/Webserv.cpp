@@ -1,5 +1,6 @@
 #include "../includes/Webserv.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -57,25 +58,23 @@ void Webserv::_runEventLoop() const {
                     break;
                 }
 
-                // Check for request or response event
                 const map<int, Client*>& clientsMap = (*itServer)->getClients();
-                map<int, Client*>::const_iterator itClient;
-                for (itClient = clientsMap.begin();
-                     itClient != clientsMap.end(); itClient++) {
-                    if (itClient->first == fd) {
-                        if (events & EPOLLIN)
-                            (*itServer)->handleRequest(fd);
-                        else if (events & EPOLLOUT)
-                            (*itServer)->handleResponse(fd);
-                    } else if (events & EPOLLIN) {
-                        // CGI
+                map<int, Client*>::const_iterator itClient = clientsMap.find(fd);
+                if (itClient != clientsMap.end()) {
+                    if (events & EPOLLIN)
+                        (*itServer)->handleRequest(fd);
+                    else if (events & EPOLLOUT)
+                        (*itServer)->handleResponse(fd);
+                    break;
+                }
+                if (events & EPOLLIN) {
+                    for (itClient = clientsMap.begin();
+                         itClient != clientsMap.end(); ++itClient) {
                         vector<int>& cgiFds = itClient->second->getCgiFds();
-                        vector<int>::const_iterator itCgiFds;
-                        for (itCgiFds = cgiFds.begin();
-                             itCgiFds != cgiFds.end(); itCgiFds++) {
-                            if (*itCgiFds == fd) {
-                                (*itServer)->handleResponse(fd);
-                            }
+                        if (find(cgiFds.begin(), cgiFds.end(), fd) !=
+                            cgiFds.end()) {
+                            (*itServer)->handleResponse(fd);
+                            break;
                         }
                     }
                 }
