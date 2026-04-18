@@ -1,6 +1,5 @@
 #include "../includes/Webserv.hpp"
 
-#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -65,6 +64,7 @@ void Webserv::_runEventLoop() const {
                 const map<int, Client*>& clientsMap = (*itServer)->getClients();
                 map<int, Client*>::const_iterator itClient =
                     clientsMap.find(fd);
+
                 if (itClient != clientsMap.end()) {
                     if (events & EPOLLIN)
                         (*itServer)->handleRequest(fd);
@@ -72,15 +72,13 @@ void Webserv::_runEventLoop() const {
                         (*itServer)->handleResponse(fd);
                     break;
                 }
-                // Chekc for CGI events
-                if (events & EPOLLIN) {
-                    for (itClient = clientsMap.begin();
-                         itClient != clientsMap.end(); ++itClient) {
-                        map<int, CGI*>& cgis = itClient->second->getCgis();
-                        if (find(cgis.begin(), cgis.end(), fd) != cgis.end()) {
-                            (*itServer)->handleCGI(itClient->first, fd);
-                            break;
-                        }
+                // Check for CGI events
+                for (itClient = clientsMap.begin();
+                     itClient != clientsMap.end(); ++itClient) {
+                    map<int, CGI*>& cgis = itClient->second->getCgis();
+                    if (cgis.find(fd) != cgis.end()) {
+                        (*itServer)->handleCGI(itClient->first, fd);
+                        break;
                     }
                 }
             }

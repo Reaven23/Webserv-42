@@ -141,7 +141,7 @@ void Server::handleRequest(int clientFd) {
     if (client->isRequestComplete()) {
         if (client->isCGIRequest(this)) {
             if (client->isSupportedCgi(this)) {
-                client->initCGI(this);
+                client->startCGI(this);
                 client->setLastActivity();
                 return;
             }

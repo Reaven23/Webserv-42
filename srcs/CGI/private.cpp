@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 
 #include "../../includes/CGI/CGI.hpp"
@@ -62,13 +63,25 @@ HttpResponse CGI::_parseOutput(const string &output) {
     HttpResponse response;
 
     size_t sep = output.find("\r\n\r\n");
+    int    skip = 4;
     if (sep == string::npos) {
-        return IHttpHandler::errorResponse(502, "Bad Gateway",
-                                           &_server->getConfig());
+        sep = output.find("\n\n");
+        if (sep == string::npos) {
+            // No headers, output is the body
+            ostringstream os;
+            os << output.size();
+            response.setStatus(200, "OK")
+                .setHeader("Content-Type", "text/plain")
+                .setHeader("Content-Length", os.str())
+                .setBody(output);
+
+            return response;
+        }
+        skip = 2;
     }
 
     string headersPart = output.substr(0, sep);
-    string bodyPart = output.substr(sep + 4);
+    string bodyPart = output.substr(sep + skip);
 
     response.setStatus(200, "OK");
     response.setBody(bodyPart);
@@ -84,6 +97,12 @@ HttpResponse CGI::_parseOutput(const string &output) {
         string val = line.substr(colon + 1);
         if (!val.empty() && val[0] == ' ') val.erase(0, 1);
         response.setHeader(key, val);
+    }
+
+    if (response.headers.find("Content-Length") == response.headers.end()) {
+        ostringstream os;
+        os << response.body.size();
+        response.setHeader("Content-Length", os.str());
     }
 
     return response;

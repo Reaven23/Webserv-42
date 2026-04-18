@@ -23,6 +23,7 @@ class LocationConfig;
 class Client {
    public:
     enum State {
+        NO_CGI,
         WAITING_CGI,
         WRITING_CGI,
         READING_CGI,
@@ -50,7 +51,7 @@ class Client {
     // Setters
     void setResponse();
     void setErrorResponse(int statusCode, ServerConfig const* config);
-    void initCGI(Server* server);
+    void startCGI(Server* server);
     void setLastActivity();
     void setState(State state);
 
@@ -63,7 +64,7 @@ class Client {
     void    clear();
     void    reset();
     void    switchToEpollOut() const;
-    void    appendToCGIBuffer(std::string buffer, ssize_t bytes);
+    void    appendToCGIBuffer(char const* buffer, ssize_t bytes);
     bool    isRequestComplete() const;
     bool    isRequestError() const;
     bool    isResponseComplete() const;

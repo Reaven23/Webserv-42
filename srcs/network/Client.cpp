@@ -39,7 +39,7 @@ void Client::_removeCGI(int cgiFd) {
 Client::Client(int epollFd, const ServerConfig* serverConfig)
     : _fd(-1),
       _epollFd(epollFd),
-      _state(WAITING_CGI),
+      _state(NO_CGI),
       _sendBuffer(""),
       _sendOffset(0),
       _lastActivity(time(NULL)),
@@ -115,9 +115,10 @@ void Client::setState(Client::State state) { _state = state; }
 void Client::setLastActivity() { _lastActivity = time(NULL); };
 
 // Public methods
-void Client::initCGI(Server* server) {
+void Client::startCGI(Server* server) {
     CGI* cgi = new CGI(server, this);
 
+    this->setState(WAITING_CGI);
     if (!cgi->resolvePath(_request.request)) {
         setErrorResponse(cgi->getErrorCode(), _serverConfig);
         switchToEpollOut();
@@ -130,7 +131,10 @@ void Client::initCGI(Server* server) {
         setErrorResponse(500, _serverConfig);
         setState(Client::SENDING_RESPONSE);
         switchToEpollOut();
+        return;
     }
+
+    cgi->run(this);
 };
 
 void Client::accept(int serverFd) {
@@ -227,7 +231,7 @@ void Client::reset() {
     _buffer.erase(0, _request.consumed);
 
     _cgiBuffer.clear();
-    _state = WAITING_CGI;
+    _state = NO_CGI;
 
     _sendBuffer = "";
     _sendOffset = 0;
@@ -250,7 +254,7 @@ void Client::switchToEpollOut() const {
     }
 };
 
-void Client::appendToCGIBuffer(string buffer, ssize_t bytes) {
+void Client::appendToCGIBuffer(char const* buffer, ssize_t bytes) {
     _cgiBuffer.append(buffer, bytes);
 }
 
