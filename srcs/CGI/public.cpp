@@ -84,9 +84,12 @@ void CGI::run(Client *client) {
 
     if (state == Client::WAITING_CGI) {
         _handleWaitingState(client, serverConfig, method);
+        setLastActivity();
     } else if (state == Client::WRITING_CGI) {
         _handleWritingState(client, serverConfig);
+        setLastActivity();
     } else if (state == Client::READING_CGI) {
         _handleReadingState(client, serverConfig);
+        setLastActivity();
     }
 }

@@ -16,7 +16,8 @@ CGI::CGI(Server *server, Client *client)
       _client(client),
       _childPid(-1),
       _bodyOffset(0),
-      _errorCode(0) {
+      _errorCode(0),
+      _lastActivity(time(NULL)) {
     _pipe[0] = -1;
     _pipe[1] = -1;
     _stdinPipe[0] = -1;

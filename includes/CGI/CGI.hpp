@@ -2,12 +2,15 @@
 
 #include <sys/types.h>
 
+#include <ctime>
 #include <string>
 #include <vector>
 
 #include "../http/HttpRequest.hpp"
 #include "../http/HttpResponse.hpp"
 #include "../network/Server.hpp"
+
+const int CGI_TIMEOUT = 60;
 
 class ServerConfig;
 
@@ -23,6 +26,11 @@ class CGI {
     int               *getPipe();
     int                getErrorCode() const;
     const std::string &getScriptPath() const;
+    pid_t              getChildPid() const;
+    time_t             getLastActivity() const;
+
+    // Setters
+    void setLastActivity();
 
     // Methods
     bool resolvePath(const HttpRequest &request);
@@ -41,6 +49,7 @@ class CGI {
     std::string _scriptPath;
     std::string _resolvedUri;
     int         _errorCode;
+    time_t      _lastActivity;
 
     // Methods
     std::vector<std::string> _buildEnv(const HttpRequest &request);

@@ -73,12 +73,11 @@ class Client {
     void    logResponse() const;
     void    applyVersion();
     void    applyConnectionHeader();
+    void    closeTimeoutCGIs();
 
    private:
     Client(Client const& other);
     Client& operator=(Client const& other);
-
-    static bool _endsWith(const std::string& value, const std::string& suffix);
 
     // Attributes
     int                 _fd;
@@ -95,4 +94,8 @@ class Client {
     // CGI
     std::map<int, CGI*> _cgis;
     std::string         _cgiBuffer;
+
+    // Methods
+    void        _removeCGI(int cgiFd);
+    static bool _endsWith(const std::string& value, const std::string& suffix);
 };

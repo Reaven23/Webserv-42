@@ -1,5 +1,8 @@
 #include "../../includes/network/Client.hpp"
 
+#include <sys/wait.h>
+
+#include <csignal>
 #include <iostream>
 #include <sstream>
 
@@ -17,6 +20,19 @@ bool Client::_endsWith(const string& value, const string& suffix) {
     }
     return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
            0;
+}
+
+void Client::_removeCGI(int cgiFd) {
+    map<int, CGI*>::const_iterator it = _cgis.find(cgiFd);
+
+    if (it != _cgis.end() && it->second) {
+        pid_t childPid = it->second->getChildPid();
+
+        kill(childPid, SIGKILL);
+        waitpid(childPid, NULL, 0);
+        delete it->second;
+        _cgis.erase(it->first);
+    }
 }
 
 // Constructors
@@ -317,4 +333,18 @@ void Client::logResponse() const {
     _response.statusCode >= 200 && _response.statusCode < 300
         ? Logger::info(os.str())
         : Logger::warn(os.str());
+}
+
+void Client::closeTimeoutCGIs() {
+    time_t                         now = time(NULL);
+    map<int, CGI*>::const_iterator it = _cgis.begin();
+
+    while (it != _cgis.end()) {
+        if (now - it->second->getLastActivity() > CGI_TIMEOUT) {
+            int fd = it->first;
+            it++;
+            _removeCGI(fd);
+        } else
+            it++;
+    }
 }

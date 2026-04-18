@@ -27,6 +27,7 @@ SRCS_FILES		= main.cpp \
 								CGI/getters.cpp \
 								CGI/private.cpp \
 								CGI/public.cpp \
+								CGI/setters.cpp \
 								config/Config.cpp \
 								config/LocationConfig.cpp \
 								config/ServerConfig.cpp \

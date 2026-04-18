@@ -47,3 +47,7 @@ bool CGI::resolvePath(const HttpRequest &request) {
     _resolvedUri = clean;
     return true;
 }
+
+pid_t CGI::getChildPid() const { return (_childPid); };
+
+time_t CGI::getLastActivity() const { return (_lastActivity); }

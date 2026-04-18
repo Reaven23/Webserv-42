@@ -66,13 +66,16 @@ void Server::_clear() {
 void Server::closeIdleConnections() {
     time_t                             now = time(NULL);
     map<int, Client *>::const_iterator it = _clients.begin();
+
     while (it != _clients.end()) {
         if (now - it->second->getLastActivity() > KEEP_ALIVE_TIMEOUT) {
             int fd = it->first;
             it++;
             _remove(fd);
-        } else
+        } else {
+            it->second->closeTimeoutCGIs();
             it++;
+        }
     }
 };
 
@@ -118,8 +121,7 @@ void Server::handleNewClient() {
 
 void Server::handleRequest(int clientFd) {
     map<int, Client *>::iterator it = _clients.find(clientFd);
-    if (it == _clients.end() || !it->second)
-        return;
+    if (it == _clients.end() || !it->second) return;
     Client *client = it->second;
 
     if (client->read() <= 0) {
@@ -156,8 +158,7 @@ void Server::handleRequest(int clientFd) {
 
 void Server::handleResponse(int clientFd) {
     map<int, Client *>::iterator it = _clients.find(clientFd);
-    if (it == _clients.end() || !it->second)
-        return;
+    if (it == _clients.end() || !it->second) return;
     Client *client = it->second;
 
     if (client->send() == -1) {
