@@ -116,7 +116,10 @@ void Server::handleNewClient() {
 };
 
 void Server::handleRequest(int clientFd) {
-    Client *client = _clients[clientFd];
+    map<int, Client *>::iterator it = _clients.find(clientFd);
+    if (it == _clients.end() || !it->second)
+        return;
+    Client *client = it->second;
 
     if (client->read() <= 0) {
         _remove(clientFd);
@@ -150,7 +153,10 @@ void Server::handleRequest(int clientFd) {
 };
 
 void Server::handleResponse(int clientFd) {
-    Client *client = _clients[clientFd];
+    map<int, Client *>::iterator it = _clients.find(clientFd);
+    if (it == _clients.end() || !it->second)
+        return;
+    Client *client = it->second;
 
     if (client->send() == -1) {
         _remove(clientFd);
