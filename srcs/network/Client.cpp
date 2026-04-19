@@ -340,7 +340,7 @@ void Client::logResponse() const {
     os << "  }\n";
     os << "}";
 
-    _response.statusCode >= 200 && _response.statusCode < 300
+    _response.statusCode >= 200 && _response.statusCode < 400
         ? Logger::info(os.str())
         : Logger::warn(os.str());
 }
