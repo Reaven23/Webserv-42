@@ -10,6 +10,7 @@
 #include "../../includes/config/ServerConfig.hpp"
 #include "../../includes/http/IHttpHandler.hpp"
 #include "../../includes/network/Client.hpp"
+#include "../../includes/network/helpers.hpp"
 #include "../../includes/utils/Logger.hpp"
 
 using namespace std;
@@ -17,6 +18,13 @@ using namespace std;
 bool CGI::pipe(HttpMethod method) {
     if (::pipe(_pipe) == -1) {
         Logger::error(string("CGI::pipe(): ") + strerror(errno));
+        return (false);
+    }
+
+    if (!setNonBlocking(_pipe[0])) {
+        Logger::error(string("fcntl(): ") + strerror(errno));
+        this->close(_pipe[0]);
+        this->close(_pipe[1]);
         return (false);
     }
 
@@ -41,6 +49,15 @@ bool CGI::pipe(HttpMethod method) {
             Logger::error(string("CGI::pipe(): ") + strerror(errno));
             this->close(_pipe[0]);
             this->close(_pipe[1]);
+            return (false);
+        }
+
+        if (!setNonBlocking(_stdinPipe[1])) {
+            Logger::error(string("fcntl(): ") + strerror(errno));
+            this->close(_pipe[0]);
+            this->close(_pipe[1]);
+            this->close(_stdinPipe[0]);
+            this->close(_stdinPipe[1]);
             return (false);
         }
 
@@ -82,14 +99,11 @@ void CGI::run(Client *client) {
     ServerConfig const *serverConfig = &_server->getConfig();
     HttpMethod const    method = client->getRequest().request.method;
 
-    if (state == Client::WAITING_CGI) {
+    if (state == Client::WAITING_CGI)
         _handleWaitingState(client, serverConfig, method);
-        setLastActivity();
-    } else if (state == Client::WRITING_CGI) {
+    else if (state == Client::WRITING_CGI)
         _handleWritingState(client, serverConfig);
-        setLastActivity();
-    } else if (state == Client::READING_CGI) {
+    else if (state == Client::READING_CGI)
         _handleReadingState(client, serverConfig);
-        setLastActivity();
-    }
+    setLastActivity();
 }

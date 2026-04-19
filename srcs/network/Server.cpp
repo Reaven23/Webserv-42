@@ -98,7 +98,7 @@ void Server::handleNewClient() {
 
     // Set new socket to non-blocking + close-on-exec (pour ne pas leak les fd
     // dans les child CGI)
-    if (!setSocketNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
+    if (!setNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
         Logger::error(string("fcntl(): ") + strerror(errno));
         delete client;
         return;
