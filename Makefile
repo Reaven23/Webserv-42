@@ -24,6 +24,10 @@ INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
 SRCS_DIR			= srcs/
 SRCS_FILES		= main.cpp \
 								CGI/CGI.cpp \
+								CGI/getters.cpp \
+								CGI/private.cpp \
+								CGI/public.cpp \
+								CGI/setters.cpp \
 								config/Config.cpp \
 								config/LocationConfig.cpp \
 								config/ServerConfig.cpp \

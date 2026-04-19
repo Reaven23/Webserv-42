@@ -26,7 +26,7 @@ Server::Server(int epollFd, ServerConfig const &config)
       _clients(){};
 
 // Destructor
-Server::~Server(){};
+Server::~Server() { _clear(); };
 
 // Getters
 string const &Server::getName() { return (_name); };
@@ -37,13 +37,14 @@ ServerSocket const &Server::getSocket() { return (_socket); };
 
 int Server::getFd() const { return (_socket.getFd()); };
 
-const map<int, Client *>& Server::getClients() const { return (_clients); };
+const map<int, Client *> &Server::getClients() const { return (_clients); };
 
 // Private methods
 void Server::_remove(int clientFd) {
     map<int, Client *>::const_iterator it = _clients.find(clientFd);
 
     if (it != _clients.end() && it->second) {
+        it->second->clear();
         delete it->second;
 
         _clients.erase(it->first);
@@ -65,20 +66,23 @@ void Server::_clear() {
 void Server::closeIdleConnections() {
     time_t                             now = time(NULL);
     map<int, Client *>::const_iterator it = _clients.begin();
+
     while (it != _clients.end()) {
         if (now - it->second->getLastActivity() > KEEP_ALIVE_TIMEOUT) {
             int fd = it->first;
             it++;
             _remove(fd);
-        } else
+        } else {
+            it->second->closeTimeoutCGIs();
             it++;
+        }
     }
 };
 
 void Server::handleNewClient() {
     int serverFd = getFd();
 
-    Client *client = new Client(&_config);
+    Client *client = new Client(_epollFd, &_config);
 
     client->accept(serverFd);
 
@@ -94,7 +98,7 @@ void Server::handleNewClient() {
 
     // Set new socket to non-blocking + close-on-exec (pour ne pas leak les fd
     // dans les child CGI)
-    if (!setSocketNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
+    if (!setNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
         Logger::error(string("fcntl(): ") + strerror(errno));
         delete client;
         return;
@@ -117,8 +121,9 @@ void Server::handleNewClient() {
 
 void Server::handleRequest(int clientFd) {
     map<int, Client *>::iterator it = _clients.find(clientFd);
-    if (it == _clients.end() || !it->second)
-        return;
+
+    if (it == _clients.end() || !it->second) return;
+
     Client *client = it->second;
 
     if (client->read() <= 0) {
@@ -128,34 +133,42 @@ void Server::handleRequest(int clientFd) {
 
     client->parse();
 
-    if (client->isRequestComplete() || client->isRequestError()) {
-        if (client->isRequestError())
-            client->setErrorResponse();
-        else if (client->isCGIRequest(this))
-            client->isSupportedCgi(this) ? client->setCGIResponse(this)
-                                         : client->setNotImplementedResponse();
-        else
-            client->setResponse();
-
+    if (client->isRequestError()) {
+        client->setErrorResponse(400, &_config);
         client->applyVersion();
         client->applyConnectionHeader();
+        client->switchToEpollOut();
+        client->setLastActivity();
+        return;
+    }
 
-        epoll_event ev = {};
-        ev.events = EPOLLOUT;
-        ev.data.fd = clientFd;
-
-        if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, clientFd, &ev) == -1) {
-            Logger::error(string("epoll_ctl() (client): Failed to "
-                                 "add flag EPOLLOUT ") +
-                          strerror(errno));
+    if (client->isRequestComplete()) {
+        if (client->isCGIRequest(this)) {
+            if (client->isSupportedCgi(this)) {
+                client->startCGI(this);
+                client->setLastActivity();
+                return;
+            }
+            client->setErrorResponse(501, &_config);
+            client->applyVersion();
+            client->applyConnectionHeader();
+            client->switchToEpollOut();
+            client->setLastActivity();
+        } else {
+            client->setResponse();
+            client->applyVersion();
+            client->applyConnectionHeader();
+            client->switchToEpollOut();
+            client->setLastActivity();
         }
     }
 };
 
 void Server::handleResponse(int clientFd) {
     map<int, Client *>::iterator it = _clients.find(clientFd);
-    if (it == _clients.end() || !it->second)
-        return;
+
+    if (it == _clients.end() || !it->second) return;
+
     Client *client = it->second;
 
     if (client->send() == -1) {
@@ -184,9 +197,21 @@ void Server::handleResponse(int clientFd) {
     }
 };
 
+void Server::handleCGI(int clientFd, int cgiFd) {
+    map<int, Client *>::iterator it = _clients.find(clientFd);
+
+    if (it == _clients.end() || !it->second) return;
+
+    Client *client = _clients[clientFd];
+
+    client->runCGI(cgiFd);
+    client->setLastActivity();
+}
+
 // Public methods
 ServerConfig const &Server::getConfig() { return (_config); }
-void                Server::setup() {
+
+void Server::setup() {
     int serverFd = getFd();
 
     epoll_event serverEvent = {};
@@ -195,7 +220,7 @@ void                Server::setup() {
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, serverFd, &serverEvent) == -1) {
         throw runtime_error(string("epoll_ctl() (server): Fatal error ") +
-                                           strerror(errno));
+                            strerror(errno));
     }
 
     stringstream ss;

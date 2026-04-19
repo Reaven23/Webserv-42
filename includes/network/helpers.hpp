@@ -1,4 +1,4 @@
 #pragma once
 
-bool setSocketNonBlocking(int fd);
+bool setNonBlocking(int fd);
 bool setCloseOnExec(int fd);

@@ -1,9 +1,11 @@
 #include "../includes/Webserv.hpp"
 
-#include <algorithm>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 
+#include "../includes/CGI/CGI.hpp"
+#include "../includes/network/Client.hpp"
 #include "../includes/network/helpers.hpp"
 #include "../includes/utils/Logger.hpp"
 
@@ -58,8 +60,11 @@ void Webserv::_runEventLoop() const {
                     break;
                 }
 
+                // Check for request or response events
                 const map<int, Client*>& clientsMap = (*itServer)->getClients();
-                map<int, Client*>::const_iterator itClient = clientsMap.find(fd);
+                map<int, Client*>::const_iterator itClient =
+                    clientsMap.find(fd);
+
                 if (itClient != clientsMap.end()) {
                     if (events & EPOLLIN)
                         (*itServer)->handleRequest(fd);
@@ -67,15 +72,13 @@ void Webserv::_runEventLoop() const {
                         (*itServer)->handleResponse(fd);
                     break;
                 }
-                if (events & EPOLLIN) {
-                    for (itClient = clientsMap.begin();
-                         itClient != clientsMap.end(); ++itClient) {
-                        vector<int>& cgiFds = itClient->second->getCgiFds();
-                        if (find(cgiFds.begin(), cgiFds.end(), fd) !=
-                            cgiFds.end()) {
-                            (*itServer)->handleResponse(fd);
-                            break;
-                        }
+                // Check for CGI events
+                for (itClient = clientsMap.begin();
+                     itClient != clientsMap.end(); ++itClient) {
+                    map<int, CGI*>& cgis = itClient->second->getCgis();
+                    if (cgis.find(fd) != cgis.end()) {
+                        (*itServer)->handleCGI(itClient->first, fd);
+                        break;
                     }
                 }
             }
@@ -93,8 +96,7 @@ void Webserv::start() {
     }
 
     if (!setCloseOnExec(_epollFd)) {
-        throw runtime_error(string("fcntl(): Fatal error: ") +
-                            strerror(errno));
+        throw runtime_error(string("fcntl(): Fatal error: ") + strerror(errno));
     }
 
     vector<ServerConfig> const&          serversConfig = _config.getServers();
