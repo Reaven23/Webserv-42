@@ -5,6 +5,7 @@
 #include <string>
 
 #include "../includes/CGI/CGI.hpp"
+#include "../includes/http/SessionManager.hpp"
 #include "../includes/network/Client.hpp"
 #include "../includes/network/helpers.hpp"
 #include "../includes/utils/Logger.hpp"
@@ -46,6 +47,9 @@ void Webserv::_runEventLoop() const {
              itServer++) {
             (*itServer)->closeIdleConnections();
         }
+
+        // Close expired sessions
+        SessionManager::cleanup();
 
         // For each event, identify the server responsible for handling it
         for (int i = 0; i < nbEvents; i++) {
