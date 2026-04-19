@@ -121,7 +121,9 @@ void Server::handleNewClient() {
 
 void Server::handleRequest(int clientFd) {
     map<int, Client *>::iterator it = _clients.find(clientFd);
+
     if (it == _clients.end() || !it->second) return;
+
     Client *client = it->second;
 
     if (client->read() <= 0) {
@@ -188,6 +190,10 @@ void Server::handleResponse(int clientFd) {
 };
 
 void Server::handleCGI(int clientFd, int cgiFd) {
+    map<int, Client *>::iterator it = _clients.find(clientFd);
+
+    if (it == _clients.end() || !it->second) return;
+
     Client *client = _clients[clientFd];
 
     client->runCGI(cgiFd);
