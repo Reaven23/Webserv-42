@@ -26,7 +26,7 @@ Server::Server(int epollFd, ServerConfig const &config)
       _clients(){};
 
 // Destructor
-Server::~Server(){};
+Server::~Server() { _clear(); };
 
 // Getters
 string const &Server::getName() { return (_name); };
@@ -160,7 +160,9 @@ void Server::handleRequest(int clientFd) {
 
 void Server::handleResponse(int clientFd) {
     map<int, Client *>::iterator it = _clients.find(clientFd);
+
     if (it == _clients.end() || !it->second) return;
+
     Client *client = it->second;
 
     if (client->send() == -1) {
