@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webserv - Test Dashboard</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          "Segoe UI",
+          -apple-system,
+          sans-serif;
+        background: #0a0a0f;
+        color: #c9d1d9;
+        min-height: 100vh;
+      }
+
+      /* ── Header ── */
+      header {
+        background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+        padding: 40px 24px 32px;
+        text-align: center;
+        border-bottom: 1px solid #21262d;
+      }
+      header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      header h1 span {
+        color: #58a6ff;
+      }
+      header p {
+        color: #8b949e;
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
+
+      /* ── Nav ── */
+      nav {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 20px;
+      }
+      nav a {
+        color: #c9d1d9;
+        background: #21262d;
+        padding: 7px 16px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 500;
+        border: 1px solid #30363d;
+        transition: all 0.15s;
+      }
+      nav a:hover {
+        background: #30363d;
+        border-color: #58a6ff;
+        color: #58a6ff;
+      }
+
+      /* ── Layout ── */
+      .container {
+        max-width: 960px;
+        margin: 28px auto;
+        padding: 0 20px;
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 700px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ── Cards ── */
+      .card {
+        background: #0d1117;
+        border: 1px solid #21262d;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 16px;
+      }
+      .card h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .card h2 .icon {
+        font-size: 1.2rem;
+      }
+      .card p {
+        font-size: 0.88rem;
+        line-height: 1.6;
+        color: #8b949e;
+      }
+
+      /* ── Section titles ── */
+      .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #484f58;
+        font-weight: 600;
+        margin: 32px 0 12px;
+        padding-left: 4px;
+      }
+
+      /* ── Tags ── */
+      .tag {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .tag-get {
+        background: #0d2818;
+        color: #3fb950;
+        border: 1px solid #1b4332;
+      }
+      .tag-post {
+        background: #2a1a00;
+        color: #d29922;
+        border: 1px solid #4a3000;
+      }
+      .tag-del {
+        background: #2d0a0a;
+        color: #f85149;
+        border: 1px solid #4a1515;
+      }
+      .tag-301 {
+        background: #0c1d3a;
+        color: #58a6ff;
+        border: 1px solid #1a3a5c;
+      }
+      .tag-302 {
+        background: #1a0d2e;
+        color: #bc8cff;
+        border: 1px solid #2e1a4a;
+      }
+      .tag-err {
+        background: #1a0d2e;
+        color: #d2a8ff;
+        border: 1px solid #2e1a4a;
+      }
+      .tag-cgi {
+        background: #0d2a2a;
+        color: #56d4d4;
+        border: 1px solid #1a4040;
+      }
+
+      /* ── Buttons ── */
+      button,
+      .btn {
+        display: inline-block;
+        padding: 9px 18px;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+      }
+      .btn-green {
+        background: #238636;
+        color: #fff;
+        border-color: #2ea043;
+      }
+      .btn-green:hover {
+        background: #2ea043;
+      }
+      .btn-blue {
+        background: #1f6feb;
+        color: #fff;
+        border-color: #388bfd;
+      }
+      .btn-blue:hover {
+        background: #388bfd;
+      }
+      .btn-red {
+        background: #da3633;
+        color: #fff;
+        border-color: #f85149;
+      }
+      .btn-red:hover {
+        background: #f85149;
+      }
+      .btn-outline {
+        background: transparent;
+        color: #c9d1d9;
+      }
+      .btn-outline:hover {
+        background: #21262d;
+      }
+
+      /* ── Upload zone ── */
+      .upload-zone {
+        border: 2px dashed #30363d;
+        border-radius: 10px;
+        padding: 28px;
+        text-align: center;
+        transition: border-color 0.2s;
+        margin-bottom: 14px;
+      }
+      .upload-zone:hover {
+        border-color: #58a6ff;
+      }
+      .upload-zone p {
+        color: #484f58;
+        margin-bottom: 12px;
+      }
+      input[type="file"] {
+        margin: 8px 0;
+        font-size: 0.85rem;
+        color: #8b949e;
+      }
+
+      /* ── Code blocks ── */
+      pre {
+        background: #161b22;
+        border: 1px solid #21262d;
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 0.8rem;
+        overflow-x: auto;
+        line-height: 1.7;
+        color: #e6edf3;
+        font-family: "SF Mono", "Fira Code", monospace;
+      }
+      code {
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 0.82rem;
+        background: #161b22;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #e6edf3;
+      }
+
+      /* ── Links ── */
+      a {
+        color: #58a6ff;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      /* ── Test links list ── */
+      .test-list {
+        list-style: none;
+        padding: 0;
+      }
+      .test-list li {
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        transition: background 0.1s;
+      }
+      .test-list li:hover {
+        background: #161b22;
+      }
+      .test-list li .expect {
+        margin-left: auto;
+        font-size: 0.75rem;
+        color: #484f58;
+      }
+
+      /* ── Result box ── */
+      #result {
+        display: none;
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-family: "SF Mono", monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      #result.success {
+        display: block;
+        background: #0d2818;
+        border: 1px solid #1b4332;
+        color: #3fb950;
+      }
+      #result.error {
+        display: block;
+        background: #2d0a0a;
+        border: 1px solid #4a1515;
+        color: #f85149;
+      }
+      #result.info {
+        display: block;
+        background: #0c1d3a;
+        border: 1px solid #1a3a5c;
+        color: #58a6ff;
+      }
+
+      /* ── Iframe ── */
+      .browse-frame {
+        width: 100%;
+        height: 200px;
+        border: 1px solid #21262d;
+        border-radius: 8px;
+        background: #fff;
+        margin-top: 12px;
+      }
+
+      /* ── Footer ── */
+      footer {
+        text-align: center;
+        padding: 28px 20px;
+        color: #30363d;
+        font-size: 0.8rem;
+        margin-top: 20px;
+        border-top: 1px solid #161b22;
+      }
+      footer span {
+        color: #484f58;
+      }
+
+      /* ── Port badge ── */
+      .port {
+        display: inline-block;
+        font-family: "SF Mono", monospace;
+        font-size: 0.75rem;
+        background: #161b22;
+        color: #8b949e;
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid #21262d;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><span>web</span>serv</h1>
+      <p>Feature test dashboard &mdash; <code>config/full.conf</code></p>
+      <nav>
+        <a href="#upload">Upload</a>
+        <a href="#browse">Browse</a>
+        <a href="#delete">Delete</a>
+        <a href="#cgi">CGI</a>
+        <a href="#redirects">Redirects</a>
+        <a href="#errors">Errors</a>
+        <a href="#curl">curl cheatsheet</a>
+      </nav>
+    </header>
+
+    <div class="container">
+      <!-- ════════════════ UPLOAD ════════════════ -->
+      <div class="section-title">File management</div>
+
+      <div class="card" id="upload">
+        <h2>
+          <span class="icon">&#x2B06;</span> Upload a file
+          <span class="tag tag-post">POST</span>
+        </h2>
+        <form method="POST" action="/upload" enctype="multipart/form-data">
+          <div class="upload-zone">
+            <p>Drag a file here or click to select</p>
+            <input type="file" name="file" />
+            <br />
+            <button
+              type="submit"
+              class="btn btn-green"
+              style="margin-top: 10px"
+            >
+              Upload to /upload
+            </button>
+          </div>
+        </form>
+        <p>
+          Uploads via <code>multipart/form-data</code> to <code>/upload</code>.
+          Max body size: <strong>2 MB</strong>.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <!-- ════════════════ BROWSE ════════════════ -->
+        <div class="card" id="browse">
+          <h2>
+            <span class="icon">&#x1F4C2;</span> Browse files
+            <span class="tag tag-get">GET</span>
+          </h2>
+          <p>Directory listing via autoindex:</p>
+          <div style="margin: 12px 0; display: flex; gap: 8px">
+            <a href="/files/" class="btn btn-blue">Open /files/</a>
+            <a href="/upload/" class="btn btn-outline">Open /upload/</a>
+          </div>
+          <iframe
+            src="/files/"
+            class="browse-frame"
+            title="directory listing"
+          ></iframe>
+        </div>
+
+        <!-- ════════════════ DELETE ════════════════ -->
+        <div class="card" id="delete">
+          <h2>
+            <span class="icon">&#x1F5D1;</span> Delete a file
+            <span class="tag tag-del">DELETE</span>
+          </h2>
+          <p>Enter the filename to delete from <code>/files/</code>:</p>
+          <div
+            style="margin: 12px 0; display: flex; gap: 8px; align-items: center"
+          >
+            <input
+              type="text"
+              id="del-filename-files"
+              placeholder="example.txt"
+              style="
+                flex: 1;
+                padding: 9px 12px;
+                border-radius: 8px;
+                border: 1px solid #30363d;
+                background: #0d1117;
+                color: #c9d1d9;
+                font-size: 0.85rem;
+              "
+            />
+            <button class="btn btn-red" onclick="deleteFile('files')">Delete</button>
+          </div>
+          <p>Enter the filename to delete from <code>/upload/</code>:</p>
+          <div
+            style="margin: 12px 0; display: flex; gap: 8px; align-items: center"
+          >
+            <input
+              type="text"
+              id="del-filename-upload"
+              placeholder="example.txt"
+              style="
+                flex: 1;
+                padding: 9px 12px;
+                border-radius: 8px;
+                border: 1px solid #30363d;
+                background: #0d1117;
+                color: #c9d1d9;
+                font-size: 0.85rem;
+              "
+            />
+            <button class="btn btn-red" onclick="deleteFile('upload')">Delete</button>
+          </div>
+          <div id="result"></div>
+          <p style="margin-top: 10px">Or use curl:</p>
+          <pre>curl -i -X DELETE http://localhost:8080/files/example.txt</pre>
+        </div>
+      </div>
+
+      <!-- ════════════════ CGI ════════════════ -->
+      <div class="section-title">
+        CGI scripts <span class="port">:8084</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="card" id="cgi">
+          <h2>
+            <span class="icon">&#x1F40D;</span> Python CGI
+            <span class="tag tag-cgi">.py</span>
+          </h2>
+          <ul class="test-list">
+            <li>
+              <a href="http://localhost:8084/py-cgi/echo.py">echo.py</a>
+              <span class="expect">GET &rarr; 200</span>
+            </li>
+            <li>
+              <a
+                href="http://localhost:8084/py-cgi/echo.py?name=webserv&lang=python"
+                >echo.py?name=webserv</a
+              >
+              <span class="expect">query string</span>
+            </li>
+          </ul>
+          <pre>curl -i http://localhost:8084/py-cgi/echo.py?hello=world</pre>
+        </div>
+
+        <div class="card">
+          <h2>
+            <span class="icon">&#x1F7E8;</span> JavaScript CGI
+            <span class="tag tag-cgi">.js</span>
+          </h2>
+          <ul class="test-list">
+            <li>
+              <a href="http://localhost:8084/js-cgi/clearUpload.js"
+                >clearUpload.js</a
+              >
+              <span class="expect">clears upload/</span>
+            </li>
+          </ul>
+          <pre>curl -i http://localhost:8084/js-cgi/clearUpload.js</pre>
+          </div>
+        </div>
+        <p style="margin-top: 8px">Browse available scripts:</p>
+        <div style="margin-top: 8px; display: flex; gap: 8px">
+          <a href="http://localhost:8084/py-cgi/" class="btn btn-outline"
+            >/py-cgi/</a
+          >
+          <a href="http://localhost:8084/js-cgi/" class="btn btn-outline"
+            >/js-cgi/</a
+          >
+      </div>
+
+      <!-- ════════════════ REDIRECTS ════════════════ -->
+      <div class="section-title">Redirects <span class="port">:8081</span></div>
+
+      <div class="card" id="redirects">
+        <h2><span class="icon">&#x21AA;</span> Redirect tests</h2>
+        <ul class="test-list">
+          <li>
+            <span class="tag tag-301">301</span>
+            <a href="http://localhost:8081/old-page">/old-page</a>
+            <span class="expect">permanent &rarr; /</span>
+          </li>
+          <li>
+            <span class="tag tag-302">30echowildcardpan>
+            <a href="http://localhost:8081/temp-page">/temp-page</a>
+            <span class="expect">temporary &rarr; /</span>
+          </li>
+        </ul>
+        <pre>
+# See the redirect headers (don't follow)
+curl -i http://localhost:8081/old-page
+curl -i http://localhost:8081/temp-page</pre
+        >
+      </div>
+
+      <!-- ════════════════ ERRORS ════════════════ -->
+      <div class="section-title">
+        Error handling <span class="port">:8080</span>
+      </div>
+
+      <div class="card" id="errors">
+        <h2><span class="icon">&#x26A0;</span> Error response tests</h2>
+        <div class="grid-2">
+          <div>
+            <p
+              style="
+                font-weight: 600;
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+                color: #c9d1d9;
+              "
+            >
+              Click to test in browser:
+            </p>
+            <ul class="test-list">
+              <li>
+                <span class="tag tag-err">404</span>
+                <a href="/this-does-not-exist">/this-does-not-exist</a>
+              </li>
+              <li>
+                <span class="tag tag-err">404</span>
+                <a href="/files/ghost.txt">/files/ghost.txt</a>
+              </li>
+              <li>
+                <span class="tag tag-err">403</span>
+                <a href="/%2e%2e/etc/passwd">path traversal attempt</a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p
+              style="
+                font-weight: 600;
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+                color: #c9d1d9;
+              "
+            >
+              Test via curl:
+            </p>
+            <pre style="margin: 0">
+# 405 - wrong method
+curl -i -X POST http://localhost:8080/
+
+# 413 - body too large
+curl -i -X POST \
+  -d "$(head -c 3000000 /dev/zero)" \
+  http://localhost:8080/upload
+
+# 404 - missing file
+curl -i -X DELETE \
+  http://localhost:8080/files/nope.txt</pre
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════ RESTRICTED ════════════════ -->
+      <div class="section-title">
+        Restricted server <span class="port">:8085</span>
+      </div>
+
+      <div class="card">
+        <h2><span class="icon">&#x1F512;</span> Body limit: 1 KB</h2>
+        <p>
+          This server has <code>client_max_body_size 1000</code>. Any POST
+          larger than 1 KB is rejected.
+        </p>
+        <pre>
+# Should be rejected (413)
+curl -i -X POST -d "$(head -c 2000 /dev/zero)" http://localhost:8085/limited
+
+# Should work
+curl -i http://localhost:8085/</pre
+        >
+      </div>
+
+      <!-- ════════════════ CURL CHEATSHEET ════════════════ -->
+      <div class="section-title">Reference</div>
+
+      <div class="card" id="curl">
+        <h2><span class="icon">&#x1F4CB;</span> curl cheatsheet</h2>
+        <pre>
+# ── GET ──
+curl -i http://localhost:8080/
+curl -i http://localhost:8080/files/
+
+# ── POST upload ──
+curl -i -X POST \
+  -F "file=@photo.jpg" \
+  http://localhost:8080/upload
+
+# ── DELETE ──
+curl -i -X DELETE http://localhost:8080/files/photo.jpg
+
+# ── CGI ──
+curl -i http://localhost:8084/py-cgi/echo.py?key=value
+curl -i http://localhost:8084/js-cgi/clearUpload.js
+
+# ── Redirects (show headers, don't follow) ──
+curl -i http://localhost:8081/old-page
+curl -i http://localhost:8081/temp-page
+
+# ── Multiple servers ──
+curl -i http://localhost:8080/   # main-site
+curl -i http://localhost:8081/   # redirects
+curl -i http://localhost:8082/   # read-only
+curl -i http://localhost:8083/   # uploads-only
+curl -i http://localhost:8084/   # cgi-server
+curl -i http://localhost:8085/   # restricted</pre
+        >
+      </div>
+    </div>
+
+    <footer>
+      <span>webserv</span> &middot; 42 project &middot; config/full.conf
+    </footer>
+
+    <script>
+      function deleteFile(directory) {
+        const target = "del-filename-" + directory;
+        var name = document.getElementById(target).value.trim();
+        var box = document.getElementById("result");
+        if (!name) {
+          box.className = "error";
+          box.textContent = "Enter a filename first.";
+          return;
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open("DELETE", "/" + directory + "/" + encodeURIComponent(name), true);
+        xhr.onload = function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            box.className = "success";
+            box.textContent = xhr.status + " - Deleted " + name;
+            var frame = document.querySelector(".browse-frame");
+            if (frame) frame.src = frame.src;
+          } else {
+            box.className = "error";
+            box.textContent = xhr.status + " " + xhr.statusText;
+          }
+        };
+        xhr.onerror = function () {
+          box.className = "error";
+          box.textContent = "Request failed.";
+        };
+        xhr.send();
+      }
+    </script>
+  </body>
+</html>
