@@ -216,7 +216,7 @@ void CGI::_handleWritingState(Client             *client,
 };
 void CGI::_handleReadingState(Client             *client,
                               ServerConfig const *serverConfig) {
-    char    buf[4096];
+    char    buf[4096] = {0};
     string  output;
     ssize_t bytes;
 

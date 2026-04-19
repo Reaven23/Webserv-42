@@ -223,10 +223,11 @@ void Server::setup() {
                             strerror(errno));
     }
 
-    stringstream ss;
+    string const &serverName = _config.getServerName();
+    stringstream  ss;
 
     ss << "Server ";
-    _name.empty() ? ss << "'No name'" : ss << "'" << _name << "'";
+    serverName.empty() ? ss << "'No name'" : ss << "'" << serverName << "'";
     ss << " listening on port ";
     ss << _socket.getPort();
     Logger::info(ss.str());
