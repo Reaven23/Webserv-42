@@ -135,6 +135,8 @@ void Server::handleRequest(int clientFd) {
 
     if (client->isRequestError()) {
         client->setErrorResponse(400, &_config);
+        client->applyVersion();
+        client->applyConnectionHeader();
         client->switchToEpollOut();
         client->setLastActivity();
         return;
@@ -148,10 +150,14 @@ void Server::handleRequest(int clientFd) {
                 return;
             }
             client->setErrorResponse(501, &_config);
+            client->applyVersion();
+            client->applyConnectionHeader();
             client->switchToEpollOut();
             client->setLastActivity();
         } else {
             client->setResponse();
+            client->applyVersion();
+            client->applyConnectionHeader();
             client->switchToEpollOut();
             client->setLastActivity();
         }

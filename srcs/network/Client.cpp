@@ -121,6 +121,8 @@ void Client::startCGI(Server* server) {
     this->setState(WAITING_CGI);
     if (!cgi->resolvePath(_request.request)) {
         setErrorResponse(cgi->getErrorCode(), _serverConfig);
+        applyVersion();
+        applyConnectionHeader();
         switchToEpollOut();
         delete cgi;
         return;
@@ -129,6 +131,8 @@ void Client::startCGI(Server* server) {
     if (!cgi->pipe(_request.request.method)) {
         delete cgi;
         setErrorResponse(500, _serverConfig);
+        applyVersion();
+        applyConnectionHeader();
         setState(Client::SENDING_RESPONSE);
         switchToEpollOut();
         return;
@@ -181,6 +185,8 @@ void Client::runCGI(int cgiFd) {
     CGI* cgi = _cgis[cgiFd];
 
     if (_request.request.method != GET && _request.request.method != POST) {
+        applyVersion();
+        applyConnectionHeader();
         setErrorResponse(405, _serverConfig);
         switchToEpollOut();
         return;
