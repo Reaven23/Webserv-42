@@ -148,9 +148,12 @@ void Client::accept(int serverFd) {
 }
 
 ssize_t Client::read() {
+    string const& serverName = _serverConfig->getServerName();
     ostringstream oss;
 
-    oss << "Request from client '" << _fd << "|" << getIp() << "'";
+    oss << "Server ";
+    serverName.empty() ? oss << "'No name'" : oss << "'" << serverName << "'";
+    oss << " received request from client '" << _fd << "|" << getIp() << "'";
     Logger::info(oss.str());
 
     char    tmp[1024] = {0};
@@ -329,8 +332,11 @@ bool Client::isSupportedCgi(Server* server) const {
 void Client::logResponse() const {
     ostringstream                       os;
     map<string, string>::const_iterator it;
+    string const& serverName = _serverConfig->getServerName();
 
-    os << "Response sent to '" << _fd << "|" << getIp() << ":\n";
+    os << "Server ";
+    serverName.empty() ? os << "'No name'" : os << "'" << serverName << "'";
+    os << " sent response to '" << _fd << "|" << getIp() << ":\n";
     os << "{\n";
     os << "  status: " << _response.statusCode << "\n";
     os << "  headers: {\n";

@@ -18,7 +18,7 @@ OS				= $(shell uname)
 # Includes
 INCLUDES_DIR		= includes
 INCLUDES_FLAGS	= -I$(INCLUDES_DIR)
-INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
+INCLUDES				= $(shell find $(INCLUDES_DIR) -name '*.hpp')
 
 # Sources
 SRCS_DIR			= srcs/
