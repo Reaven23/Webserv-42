@@ -9,7 +9,7 @@
 
 using namespace std;
 
-static const string PAGES_DIR = "www/session/";
+static const string PAGES_DIR = "www/html/session/";
 
 static string readFile(const string& path) {
     ifstream file(path.c_str(), ios::binary);
