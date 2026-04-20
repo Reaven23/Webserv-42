@@ -7,6 +7,7 @@
 #include "../../includes/http/GetHttpHandler.hpp"
 #include "../../includes/http/HttpRequest.hpp"
 #include "../../includes/http/PostHttpHandler.hpp"
+#include "../../includes/http/SessionHandler.hpp"
 
 using namespace std;
 
@@ -37,6 +38,11 @@ HttpResponse& HttpResponse::setHeader(const string& name, const string& value) {
     return (*this);
 }
 
+HttpResponse& HttpResponse::setCookie(string const& value) {
+    _cookies.push_back(value);
+    return (*this);
+}
+
 HttpResponse& HttpResponse::setStatus(int code, const string& reason) {
     statusCode = code;
     reasonPhrase = reason;
@@ -53,6 +59,9 @@ HttpResponse& HttpResponse::setBody(string const& bodyContent) {
 // Public methods
 HttpResponse HttpResponse::handleRequest(const HttpRequest&  request,
                                          const ServerConfig* serverConfig) {
+    if (SessionHandler::isSessionRoute(request.uri))
+        return (SessionHandler::handle(request));
+
     switch (request.method) {
         case GET:
             return GetHttpHandler(serverConfig).handle(request);
@@ -72,6 +81,10 @@ string HttpResponse::toString() const {
     map<string, string>::const_iterator it = headers.begin();
     for (; it != headers.end(); ++it) {
         oss << it->first << ": " << it->second << "\r\n";
+    }
+
+    for (size_t i = 0; i < _cookies.size(); ++i) {
+        oss << "Set-Cookie: " << _cookies[i] << "\r\n";
     }
 
     oss << "\r\n";

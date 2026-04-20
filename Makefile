@@ -35,12 +35,15 @@ SRCS_FILES		= main.cpp \
 								network/Server.cpp \
 								network/ServerSocket.cpp \
 								network/helpers.cpp \
+								http/CookieUtils.cpp \
 								http/DeleteHttpHandler.cpp \
 								http/IHttpHandler.cpp \
 								http/GetHttpHandler.cpp \
 								http/HttpResponse.cpp \
 								http/HttpRequest.cpp \
 								http/PostHttpHandler.cpp \
+								http/SessionHandler.cpp \
+								http/SessionManager.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp \
 								Webserv.cpp
