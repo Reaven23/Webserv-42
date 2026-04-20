@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webserv - Dashboard</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", -apple-system, sans-serif;
+        background: #0a0a0f;
+        color: #c9d1d9;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+        padding: 40px 24px 32px;
+        text-align: center;
+        border-bottom: 1px solid #21262d;
+      }
+      header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      header h1 span {
+        color: #58a6ff;
+      }
+      header p {
+        color: #8b949e;
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 48px auto;
+        padding: 0 20px;
+        flex: 1;
+      }
+
+      .card {
+        background: #0d1117;
+        border: 1px solid #21262d;
+        border-radius: 12px;
+        padding: 32px;
+        margin-bottom: 16px;
+      }
+      .card h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+      .card p {
+        font-size: 0.88rem;
+        line-height: 1.6;
+        color: #8b949e;
+        margin-bottom: 10px;
+      }
+
+      code {
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 0.82rem;
+        background: #161b22;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #e6edf3;
+      }
+
+      button, .btn {
+        display: inline-block;
+        padding: 9px 18px;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+      }
+      .btn-red {
+        background: #da3633;
+        color: #fff;
+        border-color: #f85149;
+      }
+      .btn-red:hover {
+        background: #f85149;
+      }
+
+      a {
+        color: #58a6ff;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        text-align: center;
+        padding: 28px 20px;
+        color: #30363d;
+        font-size: 0.8rem;
+        border-top: 1px solid #161b22;
+      }
+      footer span {
+        color: #484f58;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><span>web</span>serv</h1>
+      <p>Session management</p>
+    </header>
+
+    <div class="container">
+      <div class="card">
+        <h2>Welcome, {{username}}</h2>
+        <p>Session ID: <code>{{session_id}}</code></p>
+        <a href="/session/logout" class="btn btn-red" style="margin-top: 8px">Logout</a>
+      </div>
+    </div>
+
+    <footer>
+      <span>webserv</span> &middot; 42 project
+    </footer>
+  </body>
+</html>

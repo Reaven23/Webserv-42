@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webserv - Login</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", -apple-system, sans-serif;
+        background: #0a0a0f;
+        color: #c9d1d9;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+        padding: 40px 24px 32px;
+        text-align: center;
+        border-bottom: 1px solid #21262d;
+      }
+      header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      header h1 span {
+        color: #58a6ff;
+      }
+      header p {
+        color: #8b949e;
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
+
+      .container {
+        max-width: 400px;
+        margin: 48px auto;
+        padding: 0 20px;
+        flex: 1;
+      }
+
+      .card {
+        background: #0d1117;
+        border: 1px solid #21262d;
+        border-radius: 12px;
+        padding: 32px;
+      }
+      .card h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 24px;
+      }
+
+      label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #8b949e;
+        margin-bottom: 6px;
+      }
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid #30363d;
+        background: #161b22;
+        color: #c9d1d9;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        transition: border-color 0.15s;
+      }
+      input[type="text"]:focus,
+      input[type="password"]:focus {
+        outline: none;
+        border-color: #58a6ff;
+      }
+
+      button, .btn {
+        display: inline-block;
+        padding: 9px 18px;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+      }
+      .btn-blue {
+        background: #1f6feb;
+        color: #fff;
+        border-color: #388bfd;
+        width: 100%;
+        text-align: center;
+      }
+      .btn-blue:hover {
+        background: #388bfd;
+      }
+
+      a {
+        color: #58a6ff;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        text-align: center;
+        padding: 28px 20px;
+        color: #30363d;
+        font-size: 0.8rem;
+        border-top: 1px solid #161b22;
+      }
+      footer span {
+        color: #484f58;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><span>web</span>serv</h1>
+      <p>Session management</p>
+    </header>
+
+    <div class="container">
+      <div class="card">
+        <h2>Sign in</h2>
+        <form method="POST" action="/session">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="Enter your username" />
+          <button type="submit" class="btn btn-blue">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <footer>
+      <span>webserv</span> &middot; 42 project
+    </footer>
+  </body>
+</html>
