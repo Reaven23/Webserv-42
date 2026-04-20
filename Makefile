@@ -18,7 +18,7 @@ OS				= $(shell uname)
 # Includes
 INCLUDES_DIR		= includes
 INCLUDES_FLAGS	= -I$(INCLUDES_DIR)
-INCLUDES				= $(wildcard $(INCLUDES_DIR)/*.hpp)
+INCLUDES				= $(shell find $(INCLUDES_DIR) -name '*.hpp')
 
 # Sources
 SRCS_DIR			= srcs/
@@ -35,12 +35,15 @@ SRCS_FILES		= main.cpp \
 								network/Server.cpp \
 								network/ServerSocket.cpp \
 								network/helpers.cpp \
+								http/CookieUtils.cpp \
 								http/DeleteHttpHandler.cpp \
 								http/IHttpHandler.cpp \
 								http/GetHttpHandler.cpp \
 								http/HttpResponse.cpp \
 								http/HttpRequest.cpp \
 								http/PostHttpHandler.cpp \
+								http/SessionHandler.cpp \
+								http/SessionManager.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp \
 								Webserv.cpp
