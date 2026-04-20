@@ -326,7 +326,9 @@ bool Client::isSupportedCgi(Server* server) const {
     const LocationConfig* location =
         IHttpHandler::findLocation(clean, &server->getConfig());
     if (location == 0) return false;
-    return location->getCgiExtension() == ".py";
+
+    string const& ext = location->getCgiExtension();
+    return ext == ".py" || ext == ".js";
 }
 
 void Client::logResponse() const {
