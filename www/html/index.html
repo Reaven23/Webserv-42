@@ -531,7 +531,7 @@
             <span class="expect">permanent &rarr; /</span>
           </li>
           <li>
-            <span class="tag tag-302">30echowildcardpan>
+            <span class="tag tag-302">302</span>
             <a href="http://localhost:8081/temp-page">/temp-page</a>
             <span class="expect">temporary &rarr; /</span>
           </li>
@@ -594,7 +594,7 @@ curl -i -X POST http://localhost:8080/
 
 # 413 - body too large
 curl -i -X POST \
-  -d "$(head -c 3000000 /dev/zero)" \
+  --data-binary @<(head -c 3000000 /dev/zero) \
   http://localhost:8080/upload
 
 # 404 - missing file
@@ -618,7 +618,7 @@ curl -i -X DELETE \
         </p>
         <pre>
 # Should be rejected (413)
-curl -i -X POST -d "$(head -c 2000 /dev/zero)" http://localhost:8085/limited
+curl -i -X POST --data-binary <@(head -c 2000 /dev/zero) http://localhost:8085/limited
 
 # Should work
 curl -i http://localhost:8085/</pre
