@@ -17,6 +17,7 @@ Config::Config(void) : _servers() {}
 
 Config::~Config(void) {}
 
+
 // Helpers functions
 
 std::string Config::readFile(const std::string& path) {
@@ -35,7 +36,7 @@ void Config::validate() const {
 	if (_servers.empty())
 		throw std::runtime_error("no server block in config");
 
-	std::set<std::string> uniqueListens;
+	std::set<std::string> uniqueListens; // set to check for duplicates
 
 	for (size_t serverIndex = 0; serverIndex < _servers.size(); serverIndex++) {
 		const std::vector<ListenEntry>& listens = _servers[serverIndex].getListens();
@@ -68,7 +69,8 @@ void Config::validate() const {
 
 std::string Config::trim(const std::string& s) {
 	std::string::size_type start = s.find_first_not_of(" \t\r\n");
-	if (start == std::string::npos) return "";
+	if (start == std::string::npos) 
+		return "";
 	std::string::size_type end = s.find_last_not_of(" \t\r\n");
 	return s.substr(start, end - start + 1);
 }
@@ -80,11 +82,26 @@ std::string Config::stripDirectiveValue(const std::string& rest) {
 	return res;
 }
 
+void Config::enforceDirectiveSemicolon(const std::string& line) {
+	std::string s = line;
+	std::string::size_type h = s.find('#'); // skip end line comment
+	if (h != std::string::npos)
+		s = trim(s.substr(0, h));
+	if (s.empty())
+		return;
+	char c = s[s.length() - 1];
+	if (c == '{' || c == '}')
+		return;
+	if (c != ';')
+		throw std::runtime_error("expected ';' at end of directive: " + line);
+}
+
 // find the next { ... }, return the content, update pos
 std::string Config::extractBlock(const std::string& content, std::string::size_type& pos) {
 	std::string::size_type open = content.find('{', pos);
 
-	if (open == std::string::npos) return "";
+	if (open == std::string::npos)
+		throw std::runtime_error("missing opening brace");
 
 	int brackets = 1;
 	std::string::size_type i = open + 1;
@@ -129,20 +146,45 @@ static bool isValidCgiExtension(const std::string& ext) {
 	return false;
 }
 
+static bool isValidErrorCode(const int code) {
+	return code >= 300 && code <= 599;
+}
+
+static bool isValidRedirectCode(const std::string& code) {
+	return code == "301" || code == "302";
+}
+
+static bool isValidMethod(const std::string& method) {
+	return !method.empty() && (method == "GET" || method == "POST" || method == "DELETE");
+}
+
+static bool isValidRedirectTarget(const std::string& target) {
+	return !target.empty() && (target[0] == '/' || !target.find("http://") || !target.find("https://"));
+}
+
+static bool isIdentifierContinuationChar(unsigned char c) {
+	return (std::isalnum(c) != 0) || c == '_';
+}
+
 // "location /path { ... }"
 void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 	std::string::size_type pos = 0;
 	while (pos < block.length()) {
 		std::string::size_type lineEnd = block.find('\n', pos);
-		if (lineEnd == std::string::npos) lineEnd = block.length();
+		if (lineEnd == std::string::npos) 
+			lineEnd = block.length();
 		std::string line = trim(block.substr(pos, lineEnd - pos));
 		pos = lineEnd + 1;
 
 		// skip empty/comment
 		if (line.empty() || line[0] == '#') continue;
 
+		enforceDirectiveSemicolon(line);
+
 		if (line.find("upload_path") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(11));
+			if (rest.empty())
+				throw std::runtime_error("missing upload_path: " + line);
 			loc.setUploadPath(rest);
 			continue;
 		}
@@ -153,6 +195,8 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 				loc.setUpload(true);
 			else if (rest == "off")
 				loc.setUpload(false);
+			else
+				throw std::runtime_error("invalid upload directive: " + line);
 			continue;
 		}
 
@@ -162,25 +206,31 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 				loc.setAutoindexState(LocationConfig::AUTOINDEX_ON);
 			else if (rest == "off")
 				loc.setAutoindexState(LocationConfig::AUTOINDEX_OFF);
+			else
+				throw std::runtime_error("invalid autoindex directive: " + line);
 			continue;
 		}
 
 		if (line.find("redirect") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(8));
 			std::istringstream iss(rest);
-			std::string a;
-			std::string b;
-			if (!(iss >> a)) continue;
-			if (iss >> b) {
-				if (a == "301")
-					loc.setRedirect(b, 301);
-				else if (a == "302")
-					loc.setRedirect(b, 302);
+			std::string tok1;
+			std::string tok2;
+			bool twoTokens = false;
+
+			if (!(iss >> tok1))
+				throw std::runtime_error("missing redirect code or target");
+			if (iss >> tok2)
+				twoTokens = true;
+			if (twoTokens) {
+				if (isValidRedirectCode(tok1) && isValidRedirectTarget(tok2))
+					loc.setRedirect(tok2, atoi(tok1.c_str()));
 				else
-					loc.setRedirect(rest, 302);
+					throw std::runtime_error("invalid redirect code or target: " + tok1 + " " + tok2);
 			} else {
-				if (a == "301" || a == "302") continue;
-				loc.setRedirect(a, 302);
+				if (!isValidRedirectTarget(tok1))
+					throw std::runtime_error("invalid redirect target: " + tok1);
+				loc.setRedirect(tok1, 302);
 			}
 			continue;
 		}
@@ -188,6 +238,8 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 		if (line.find("cgi") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(3));
 
+			if (rest.empty())
+				throw std::runtime_error("missing cgi extension: " + line);
 			if (!isValidCgiExtension(rest))
 				throw std::runtime_error("invalid cgi extension: " + rest);
 
@@ -198,11 +250,16 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 		if (line.find("methods") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(7));
 			std::string::size_type start = 0;
+			if (rest.empty())
+				throw std::runtime_error("missing methods: " + line);
 			while (start < rest.length()) {
 				std::string::size_type end = rest.find_first_of(" \t", start);
-				if (end == std::string::npos) end = rest.length();
+				if (end == std::string::npos) 
+					end = rest.length();
 				std::string method = trim(rest.substr(start, end - start));
-				if (!method.empty()) loc.addMethod(method);
+				if (!isValidMethod(method))
+					throw std::runtime_error("invalid method: " + method);
+				loc.addMethod(method);
 				start = (end == rest.length()) ? end : end + 1;
 			}
 			continue;
@@ -210,12 +267,16 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 
 		if (line.find("root") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(4));
+			if (rest.empty())
+				throw std::runtime_error("missing root: " + line);
 			loc.setRoot(rest);
 			continue;
 		}
 
 		if (line.find("index") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(5));
+			if (rest.empty())
+				throw std::runtime_error("missing index: " + line);
 			loc.setIndex(rest);
 			continue;
 		}
@@ -226,6 +287,8 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 				size_t sz = static_cast<size_t>(strtoul(rest.c_str(), NULL, 10));
 				loc.setClientMaxBodySize(sz);
 			}
+			else 
+				throw std::runtime_error("missing client_max_body_size: " + line);
 			continue;
 		}
 
@@ -241,18 +304,27 @@ void Config::parseServerBlock(const std::string& block) {
 	while (pos < block.length()) {
 		std::string::size_type startOfLine = pos;
 		std::string::size_type lineEnd = block.find('\n', pos);
-		if (lineEnd == std::string::npos) lineEnd = block.length();
+
+		if (lineEnd == std::string::npos) 
+			lineEnd = block.length();
+
 		std::string line = trim(block.substr(pos, lineEnd - pos));
-		pos = lineEnd + 1;
+		pos = lineEnd + 1; // next line pos
 
 		// skip empty/comment
-		if (line.empty() || line[0] == '#') continue;
+		if (line.empty() || line[0] == '#') 
+			continue;
+
+		// if not location (for ; check)
+		if (line.find("location") != 0)
+			enforceDirectiveSemicolon(line);
 
 		// listen 8080/127.0.0.1:8080;
 		if (line.find("listen") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(6));
 			std::string host = "0.0.0.0";
 			std::string portStr = rest;
+
 			std::string::size_type colon = rest.find(':');
 			if (colon != std::string::npos) {
 				host = trim(rest.substr(0, colon));
@@ -264,6 +336,8 @@ void Config::parseServerBlock(const std::string& block) {
 
 		if (line.find("server_name") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(11));
+			if (rest.empty())
+				throw std::runtime_error("missing server_name: " + line);
 			server.setServerName(rest);
 			continue;
 		}
@@ -271,26 +345,37 @@ void Config::parseServerBlock(const std::string& block) {
 		if (line.find("client_max_body_size") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(20));
 			if (!rest.empty()) {
-				size_t sz = static_cast<size_t>(strtoul(rest.c_str(), NULL, 10));
+				size_t sz = static_cast<size_t>(strtoul(rest.c_str(), NULL, 10));// strtoul not atoi cause client_max_body_size can be > INT_MAX
 				server.setClientMaxBodySize(sz);
 			}
+			else 
+				throw std::runtime_error("missing client_max_body_size: " + line);
 			continue;
 		}
 
 		if (line.find("error_page") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(10));
 			std::string::size_type sp = rest.find_first_of(" \t");
-			if (sp != std::string::npos) {
-				std::string codeStr = trim(rest.substr(0, sp));
-				std::string path = trim(rest.substr(sp));
-				int code = atoi(codeStr.c_str());
-				if (!path.empty()) server.addErrorPage(code, path);
-			}
+
+			if (sp == std::string::npos || rest.empty())
+				throw std::runtime_error("missing path for error page: " + line);
+
+			std::string codeStr = trim(rest.substr(0, sp));
+			std::string path = trim(rest.substr(sp));
+			if (codeStr.empty() || path.empty())
+				throw std::runtime_error("invalid error page directive: " + line);
+		
+			int code = atoi(codeStr.c_str());
+			if (!isValidErrorCode(code))
+				throw std::runtime_error("invalid error code: " + codeStr);
+			server.addErrorPage(code, path);
 			continue;
 		}
 
 		if (line.find("root") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(4));
+			if (rest.empty())
+				throw std::runtime_error("missing root: " + line);
 			server.setRoot(rest);
 			continue;
 		}
@@ -298,29 +383,29 @@ void Config::parseServerBlock(const std::string& block) {
 		// index index.html;
 		if (line.find("index") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(5));
+			if (rest.empty())
+				throw std::runtime_error("missing index: " + line);
 			server.setIndex(rest);
 			continue;
 		}
 
 		// location /path { ... }
 		if (line.find("location") == 0) {
-			////std::cout << "location" << std::endl;
-
 			std::string rest = trim(line.substr(8));
+			if (rest.empty())
+				throw std::runtime_error("missing location: " + line);
+			
 			std::string::size_type pathEnd = rest.find_first_of(" \t{");
 			std::string locPath = (pathEnd != std::string::npos) ? trim(rest.substr(0, pathEnd)) : rest;
 
-			/*std::cout << "line :" << line << std::endl;////
-			std::cout << "rest :" << rest << std::endl;
-			std::cout << "pathEnd :" << pathEnd << std::endl;
-			std::cout << "locPath :" << locPath << std::endl;*/
-
-			if (locPath.empty()) locPath = "/";
+			if (locPath.empty())
+				locPath = "/";
 
 			std::string::size_type bracePos = block.find('{', startOfLine);
 			std::string::size_type nextLocLine = nextLocationLineIndex(block, pos);
 			if (bracePos == std::string::npos || (nextLocLine != std::string::npos && bracePos >= nextLocLine))
 				throw std::runtime_error("location block has no opening brace: " + line);
+			
 			std::string inner = extractBlock(block, bracePos);
 			pos = bracePos;
 
@@ -338,42 +423,58 @@ void Config::parseServerBlock(const std::string& block) {
 	_servers.push_back(server);
 }
 
+
 // Main function
 
 void Config::parse(const std::string& path) {
 	std::string content = readFile(path);
-
 	std::string::size_type pos = 0;
+
 	while (pos < content.length()) {
 		std::string::size_type serverPos = content.find("server", pos);
-		if (serverPos == std::string::npos) break;
-		pos = serverPos + 6;
-		// check if "server" is a whole word:
-		// if serverPos > 0, not the first char of the line,
-		// if the char before isalnum or '_'
-		// if yes, continue (skip)
-		if (serverPos > 0 && (isalnum(content[serverPos - 1]) || content[serverPos - 1] == '_'))
-			continue;
+		if (serverPos == std::string::npos)
+			break;
 
-		// skip "server" if in a comment
+		// "server" as substring of another word (e.g. "/myserver", "xserver")
+		if (serverPos > 0 && isIdentifierContinuationChar(static_cast<unsigned char>(content[serverPos - 1]))) {
+			pos = serverPos + 6;
+			continue;
+		}
+
+		// Before testing keyword form, skip matches inside a # comment line
 		std::string::size_type lineStart = content.rfind('\n', serverPos);
-		if (lineStart == std::string::npos) 
+		if (lineStart == std::string::npos)
 			lineStart = 0;
-		else 
+		else
 			lineStart += 1;
 		std::string::size_type hashPos = content.find('#', lineStart);
-		if (hashPos != std::string::npos && hashPos < serverPos)
+		if (hashPos != std::string::npos && hashPos < serverPos) {
+			pos = serverPos + 6;
 			continue;
-
-		std::string block = extractBlock(content, pos);
-		if (!block.empty()) {
-			////std::cout << "block: " << block << std::endl;
-			parseServerBlock(block);
 		}
+
+		std::string::size_type afterWord = serverPos + 6;
+
+		// if afterWord is out of bounds
+		if (afterWord >= content.length())
+			throw std::runtime_error("unexpected end of file after 'server'");
+
+		// "server {" or "server\n{" NOT "serverL {"
+		unsigned char after = static_cast<unsigned char>(content[afterWord]);
+		if (!std::isspace(after) && after != '{')
+			throw std::runtime_error("expected whitespace or '{' after 'server'");
+
+		pos = afterWord;
+		std::string block = extractBlock(content, pos);
+
+		if (trim(block).empty())
+			throw std::runtime_error("empty server block");
+		parseServerBlock(block);
 	}
 
 	validate();
 }
+
 
 // Getter
 
@@ -442,6 +543,7 @@ void Config::print() const {
         std::cout << std::endl;
     }
 }
+
 
 // Operator
 

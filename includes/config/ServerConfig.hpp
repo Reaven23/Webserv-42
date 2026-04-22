@@ -6,7 +6,7 @@
 
 #include "LocationConfig.hpp"
 
-//// Socket bind : IP + port.
+// Socket bind : IP + port.
 struct ListenEntry {
 	std::string host;
 	int port;
@@ -45,7 +45,7 @@ class ServerConfig {
 		size_t getClientMaxBodySize() const;
 		void setClientMaxBodySize(size_t size);
 
-		// Errors pages (by [error code] -> [error paage])
+		// Errors pages (by [error code] -> [error page])
 		const std::map<int, std::string>& getErrorPages() const;
 		void addErrorPage(int code, const std::string& path);
 
