@@ -119,7 +119,7 @@ std::string::size_type Config::nextLocationLineIndex(const std::string& block, s
 	return std::string::npos;
 }
 
-static const std::string validCgiExtensions[] = { ".py", ".js" }; // Allowed cgi extensions
+static const std::string validCgiExtensions[] = { ".py", ".js", ".bla" };
 
 static bool isValidCgiExtension(const std::string& ext) {
 	for (std::string::size_type i = 0; i < sizeof(validCgiExtensions) / sizeof(validCgiExtensions[0]); i++) {
@@ -217,6 +217,15 @@ void Config::parseLocationBlock(const std::string& block, LocationConfig& loc) {
 		if (line.find("index") == 0) {
 			std::string rest = stripDirectiveValue(line.substr(5));
 			loc.setIndex(rest);
+			continue;
+		}
+
+		if (line.find("client_max_body_size") == 0) {
+			std::string rest = stripDirectiveValue(line.substr(20));
+			if (!rest.empty()) {
+				size_t sz = static_cast<size_t>(strtoul(rest.c_str(), NULL, 10));
+				loc.setClientMaxBodySize(sz);
+			}
 			continue;
 		}
 

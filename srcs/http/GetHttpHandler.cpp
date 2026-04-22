@@ -207,10 +207,11 @@ HttpResponse GetHttpHandler::handle(const HttpRequest& request) const {
     if (!_fileExists(path, &st))
         return errorResponse(404, "Not Found", _serverConfig);
     if (S_ISDIR(st.st_mode)) {
-        if (location != NULL &&
+        bool locationHasIndex = (location != NULL && !location->getIndex().empty());
+        if (!locationHasIndex && location != NULL &&
             location->getAutoindexState() == LocationConfig::AUTOINDEX_ON)
             return _autoindexResponse(path, sanitized.uri);
-        return errorResponse(403, "Forbidden", _serverConfig);
+        return errorResponse(404, "Not Found", _serverConfig);
     }
     if (!S_ISREG(st.st_mode))
         return errorResponse(403, "Forbidden", _serverConfig);

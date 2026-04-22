@@ -49,6 +49,10 @@ public:
 	const std::string& getCgiExtension() const;
 	void setCgiExtension(const std::string& ext);
 
+	bool hasClientMaxBodySize() const;
+	size_t getClientMaxBodySize() const;
+	void setClientMaxBodySize(size_t size);
+
 	private:
 		std::string _path;  // ex. "/", "/upload", ...
 		std::vector<std::string> _methods;  // ex. "GET", "POST", ...
@@ -61,4 +65,6 @@ public:
 		bool _upload_enabled;
 		std::string _upload_path;  // ex. "./uploads"
 		std::string _cgi_extension;  // ex. ".py"
+		bool _client_max_body_size_set;
+		size_t _client_max_body_size;
 };
