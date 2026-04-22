@@ -17,10 +17,8 @@
 using namespace std;
 
 // Constructors
-// TODO: passer 'server_name' depuis la config pour _name
 Server::Server(int epollFd, ServerConfig const &config)
-    : _name(""),
-      _config(config),
+    : _config(config),
       _epollFd(epollFd),
       _socket(config.getPort()),
       _clients(){};

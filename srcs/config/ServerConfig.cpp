@@ -7,7 +7,7 @@ ServerConfig::ServerConfig(void)
 		_server_name(""),
 		_root(""),
 		_index(""),
-		_client_max_body_size(1048576u),  //// 1 MB
+		_client_max_body_size(1048576u),  // 1 MB, 1024*1024
 		_error_pages(),
 		_locations() {}
 
@@ -21,6 +21,7 @@ ServerConfig::ServerConfig(const ServerConfig& other)
 _locations(other._locations) {}
 
 ServerConfig::~ServerConfig(void) {}
+
 
 // Setters
 
@@ -40,6 +41,7 @@ void ServerConfig::setIndex(const std::string& index) { _index = index; }
 void ServerConfig::setClientMaxBodySize(size_t size) { _client_max_body_size = size; }
 
 void ServerConfig::addErrorPage(int code, const std::string& path) { _error_pages[code] = path; }
+
 
 // Getters
 
@@ -79,6 +81,7 @@ void ServerConfig::applyLocationDefaults() {
 		if (location.getIndex().empty()) location.setIndex(_index);
 	}
 }
+
 
 // Operator
 

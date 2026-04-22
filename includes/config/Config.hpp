@@ -33,6 +33,9 @@ class Config {
 		// trim + remove trailing ';' if present
 		static std::string stripDirectiveValue(const std::string& rest);
 
+		// directives end with ';'
+		static void enforceDirectiveSemicolon(const std::string& line);
+
 		// parse a "server { ... }" block and add the result to _servers
 		void parseServerBlock(const std::string& block);
 

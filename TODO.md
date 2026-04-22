@@ -17,15 +17,22 @@
 - si pas de {} pour location (cad si juste random "location" dans conf)
 - fix no server block (fix commented block server)
 
+- Check: missing ';'
+- error page : >= 300 && <= 599
+- error page : no path/no code
+- declaration "methods" dans config mais : no methods/wrong method
+- declaration "redirect" dans config mais : no redirect path
+- redirect code seulement 301 & 302
+- redirect path start '/' or 'http://' or 'https://' -> géré au 'max', voir avec http handler
+- Lot of details
+
+### To Do ?
+- location avec même prefix
+- doublon error_page 
+
+### Team 
+
 
 ### To Do
-- wrong file (missing ';')
-
-- throw quand erreur dans le parsing
-- error_page (code limités) 
-
 - Clean code (opti, consistency, static, etc)
 - Nettoyer en retirant //// TEMP
-
-### Questions
-- si methods vide (déjà géré par Request man)
