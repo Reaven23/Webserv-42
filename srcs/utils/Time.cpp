@@ -4,21 +4,24 @@
 
 #include <cstdio>
 #include <ctime>
+#include <sstream>
 
 using namespace std;
 
-// TODO: a la fin du projet il faudra surement retirer cette partie car elle
-// contient des fonctions interdites
 namespace Time {
 string timestamp() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
+    time_t now = time(NULL);
 
-    struct tm* tm_info = localtime(&tv.tv_sec);
+    struct tm* tm_info = localtime(&now);
 
-    char buffer[16];
-    snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d.%03d", tm_info->tm_hour,
-             tm_info->tm_min, tm_info->tm_sec, (int)(tv.tv_usec / 1000));
-    return string(buffer);
+    ostringstream os;
+
+    tm_info->tm_hour > 9 ? os << tm_info->tm_hour
+                         : os << "0" << tm_info->tm_hour;
+    os << ":";
+    tm_info->tm_min > 9 ? os << tm_info->tm_min : os << "0" << tm_info->tm_min;
+    os << ":";
+    tm_info->tm_sec > 9 ? os << tm_info->tm_sec : os << "0" << tm_info->tm_sec;
+    return os.str();
 }
 }  // namespace Time
