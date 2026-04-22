@@ -13,7 +13,9 @@ LocationConfig::LocationConfig(void)
 		_upload_specified(false),
 		_upload_enabled(false),
 		_upload_path(""),
-		_cgi_extension("") {}
+		_cgi_extension(""),
+		_client_max_body_size_set(false),
+		_client_max_body_size(0) {}
 
 LocationConfig::LocationConfig(const LocationConfig& other)
 	:	_path(other._path),
@@ -26,7 +28,9 @@ LocationConfig::LocationConfig(const LocationConfig& other)
 		_upload_specified(other._upload_specified),
 		_upload_enabled(other._upload_enabled),
 		_upload_path(other._upload_path),
-		_cgi_extension(other._cgi_extension) {}
+		_cgi_extension(other._cgi_extension),
+		_client_max_body_size_set(other._client_max_body_size_set),
+		_client_max_body_size(other._client_max_body_size) {}
 
 LocationConfig::~LocationConfig(void) {}
 
@@ -57,6 +61,11 @@ void LocationConfig::setUploadPath(const std::string& path) { _upload_path = pat
 
 void LocationConfig::setCgiExtension(const std::string& ext) { _cgi_extension = ext; }
 
+void LocationConfig::setClientMaxBodySize(size_t size) {
+	_client_max_body_size_set = true;
+	_client_max_body_size = size;
+}
+
 
 // Getters
 
@@ -86,6 +95,10 @@ bool LocationConfig::hasCgiExtension() const { return !_cgi_extension.empty(); }
 
 const std::string& LocationConfig::getCgiExtension() const { return _cgi_extension; }
 
+bool LocationConfig::hasClientMaxBodySize() const { return _client_max_body_size_set; }
+
+size_t LocationConfig::getClientMaxBodySize() const { return _client_max_body_size; }
+
 
 // Operator
 
@@ -102,6 +115,8 @@ LocationConfig& LocationConfig::operator=(const LocationConfig& other) {
 		_upload_enabled = other._upload_enabled;
 		_upload_path = other._upload_path;
 		_cgi_extension = other._cgi_extension;
+		_client_max_body_size_set = other._client_max_body_size_set;
+		_client_max_body_size = other._client_max_body_size;
 	}
 	return *this;
 }

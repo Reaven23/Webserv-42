@@ -159,7 +159,9 @@ HttpResponse PostHttpHandler::handle(const HttpRequest& request) const {
     }
 
     if (_serverConfig != NULL) {
-        size_t maxBody = _serverConfig->getClientMaxBodySize();
+        size_t maxBody = (location != NULL && location->hasClientMaxBodySize())
+            ? location->getClientMaxBodySize()
+            : _serverConfig->getClientMaxBodySize();
         if (maxBody > 0 && request.body.size() > maxBody)
             return errorResponse(413, "Payload Too Large", _serverConfig);
     }
