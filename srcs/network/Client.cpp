@@ -254,7 +254,7 @@ void Client::clear() {
         CGI* cgi = it->second;
         if (cgi == NULL) continue;
         map<int, CGI*>::const_iterator scan = _cgis.begin();
-        bool alreadySeen = false;
+        bool                           alreadySeen = false;
         for (; scan != it; ++scan) {
             if (scan->second == cgi) {
                 alreadySeen = true;

@@ -4,7 +4,6 @@
 #include "network/Server.hpp"
 
 #define EPOLL_BLCK_TIME 1000
-
 #define MAX_EVENTS 512
 
 class Webserv {
