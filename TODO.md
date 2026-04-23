@@ -26,13 +26,8 @@
 - redirect path start '/' or 'http://' or 'https://' -> géré au 'max', voir avec http handler
 - Lot of details
 
-### To Do ?
-- location avec même prefix
-- doublon error_page 
-
-### Team 
+- throw si duplicate location (dans le meme block server)
 
 
 ### To Do
-- Clean code (opti, consistency, static, etc)
 - Nettoyer en retirant //// TEMP
