@@ -56,6 +56,7 @@ void Server::_clear() {
 
     for (it = _clients.begin(); it != _clients.end(); it++) {
         if (it->second) {
+            it->second->clear();
             delete it->second;
         }
     }
