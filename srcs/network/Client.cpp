@@ -118,6 +118,9 @@ void Client::setErrorResponse(int statusCode, ServerConfig const* config) {
         case 501:
             reason = "Not Implemented";
             break;
+        case 504:
+            reason = "Gateway Timeout";
+            break;
         case 500:
         default:
             reason = "Internal server error";
@@ -231,10 +234,13 @@ ssize_t Client::send() {
     ssize_t bytes = ::send(_fd, _sendBuffer.c_str() + _sendOffset,
                            _sendBuffer.size() - _sendOffset, 0);
 
-    if (bytes == -1) {
+    if (bytes <= 0) {
         os << "send(): Failed to send data to client '" << _fd << "|" << getIp()
            << "'" << endl;
-        os << strerror(errno);
+        if (bytes == -1)
+            os << strerror(errno);
+        else
+            os << "connection closed by peer";
 
         Logger::error(os.str());
         return (-1);
@@ -386,13 +392,23 @@ void Client::logResponse() const {
 void Client::closeTimeoutCGIs() {
     time_t                         now = time(NULL);
     map<int, CGI*>::const_iterator it = _cgis.begin();
+    bool                           timedOut = false;
 
     while (it != _cgis.end()) {
         if (now - it->second->getLastActivity() > CGI_TIMEOUT) {
             int fd = it->first;
             it++;
             _removeCGI(fd);
+            timedOut = true;
         } else
             it++;
+    }
+
+    if (timedOut && _state != SENDING_RESPONSE && _state != NO_CGI) {
+        setErrorResponse(504, _serverConfig);
+        applyVersion();
+        applyConnectionHeader();
+        setState(SENDING_RESPONSE);
+        switchToEpollOut();
     }
 }
