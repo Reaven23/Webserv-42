@@ -9,6 +9,7 @@
 #include "../includes/network/Client.hpp"
 #include "../includes/network/helpers.hpp"
 #include "../includes/utils/Logger.hpp"
+#include "../includes/utils/Signals.hpp"
 
 using namespace std;
 
@@ -33,10 +34,11 @@ vector<Server*> const& Webserv::getServers() const { return (_servers); };
 void Webserv::_runEventLoop() const {
     epoll_event eventQueue[MAX_EVENTS];
 
-    while (true) {
+    while (!g_stop) {
         int nbEvents =
             epoll_wait(_epollFd, eventQueue, MAX_EVENTS, EPOLL_BLCK_TIME);
         if (nbEvents == -1) {
+            if (g_stop) break;
             Logger::error(string("epoll_wait(): ") + strerror(errno));
             break;
         }

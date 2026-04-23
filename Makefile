@@ -46,6 +46,7 @@ SRCS_FILES		= main.cpp \
 								http/SessionManager.cpp \
 								utils/Logger.cpp \
 								utils/Time.cpp \
+								utils/Signals.cpp \
 								Webserv.cpp
 SRCS					= $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 
