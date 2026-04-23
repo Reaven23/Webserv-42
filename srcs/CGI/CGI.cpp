@@ -25,4 +25,11 @@ CGI::CGI(Server *server, Client *client)
 };
 
 // Destructor
-CGI::~CGI(){};
+CGI::~CGI() {
+    if (_pipe[0] != -1) close(_pipe[0]);
+    if (_pipe[1] != -1) close(_pipe[1]);
+    if (_childPid > 0) {
+        kill(_childPid, SIGTERM);
+        waitpid(_childPid, NULL, 0);
+    }
+};

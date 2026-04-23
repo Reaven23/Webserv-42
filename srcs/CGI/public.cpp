@@ -41,6 +41,13 @@ bool CGI::pipe(HttpMethod method) {
         return (false);
     }
 
+    if (!setCloseOnExec(_pipe[0]) || !setCloseOnExec(_pipe[1])) {
+        Logger::error(string("fcntl(): ") + strerror(errno));
+        this->close(_pipe[0]);
+        this->close(_pipe[1]);
+        return (false);
+    };
+
     // register pipe read-end to client instance
     _client->getCgis()[_pipe[0]] = this;
 
@@ -75,6 +82,15 @@ bool CGI::pipe(HttpMethod method) {
             this->close(_stdinPipe[1]);
             return (false);
         }
+
+        if (!setCloseOnExec(_stdinPipe[0]) || !setCloseOnExec(_stdinPipe[1])) {
+            Logger::error(string("fcntl(): ") + strerror(errno));
+            this->close(_pipe[0]);
+            this->close(_pipe[1]);
+            this->close(_stdinPipe[0]);
+            this->close(_stdinPipe[1]);
+            return (false);
+        };
 
         // register stdinPipe write-end to client instance
         _client->getCgis()[_stdinPipe[1]] = this;

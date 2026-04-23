@@ -4,8 +4,11 @@
 #include "../includes/Webserv.hpp"
 #include "../includes/config/Config.hpp"
 #include "../includes/utils/Logger.hpp"
+#include "../includes/utils/Signals.hpp"
 
 int main(int argc, char* argv[]) {
+    setupSignals();
+
     if (argc != 2) {
         Logger::error("Error: invalid number of arguments");
         return (1);
