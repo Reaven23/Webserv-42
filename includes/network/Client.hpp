@@ -98,5 +98,6 @@ class Client {
 
     // Methods
     void        _removeCGI(int cgiFd);
+    void        _finalizeCGI(CGI* cgi);
     static bool _endsWith(const std::string& value, const std::string& suffix);
 };
