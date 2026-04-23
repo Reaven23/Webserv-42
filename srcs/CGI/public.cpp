@@ -48,9 +48,6 @@ bool CGI::pipe(HttpMethod method) {
         return (false);
     };
 
-    // register pipe read-end to client instance
-    _client->getCgis()[_pipe[0]] = this;
-
     if (method == POST) {
         if (::pipe(_stdinPipe) == -1) {
             Logger::error(string("CGI::pipe(): ") + strerror(errno));
@@ -91,22 +88,16 @@ bool CGI::pipe(HttpMethod method) {
             this->close(_stdinPipe[1]);
             return (false);
         };
-
-        // register stdinPipe write-end to client instance
-        _client->getCgis()[_stdinPipe[1]] = this;
     }
+
+    // register pipes on client instance only after full success
+    _client->getCgis()[_pipe[0]] = this;
+    if (method == POST) _client->getCgis()[_stdinPipe[1]] = this;
 
     return (true);
 };
 
 void CGI::close(int fd) {
-    map<int, CGI *>          &cgis = _client->getCgis();
-    map<int, CGI *>::iterator it = cgis.find(fd);
-
-    if (it != cgis.end()) {
-        cgis.erase(it);
-    }
-
     if (fd >= 0) ::close(fd);
 }
 

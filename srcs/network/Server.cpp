@@ -125,6 +125,8 @@ void Server::handleRequest(int clientFd) {
 
     Client *client = it->second;
 
+    if (client->getState() != Client::NO_CGI) return;
+
     if (client->read() <= 0) {
         _remove(clientFd);
         return;
@@ -142,6 +144,7 @@ void Server::handleRequest(int clientFd) {
     }
 
     if (client->isRequestComplete()) {
+        client->logRequest();
         if (client->isCGIRequest(this)) {
             if (client->isSupportedCgi(this)) {
                 client->startCGI(this);

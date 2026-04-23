@@ -114,11 +114,17 @@ void CGI::_handleWaitingState(Client *client, ServerConfig const *serverConfig,
     if ((pid = fork()) == -1) {
         Logger::error(string("fork(): ") + strerror(errno));
 
+        client->getCgis().erase(_pipe[0]);
         close(_pipe[0]);
         close(_pipe[1]);
+        _pipe[0] = -1;
+        _pipe[1] = -1;
         if (method == POST) {
+            client->getCgis().erase(_stdinPipe[1]);
             close(_stdinPipe[0]);
             close(_stdinPipe[1]);
+            _stdinPipe[0] = -1;
+            _stdinPipe[1] = -1;
         }
 
         client->setErrorResponse(500, serverConfig);
@@ -183,7 +189,11 @@ void CGI::_handleWaitingState(Client *client, ServerConfig const *serverConfig,
     } else {
         // -- parent --
         close(_pipe[1]);
-        if (method == POST) close(_stdinPipe[0]);
+        _pipe[1] = -1;
+        if (method == POST) {
+            close(_stdinPipe[0]);
+            _stdinPipe[0] = -1;
+        }
 
         _childPid = pid;
         method == GET ? client->setState(Client::READING_CGI)
@@ -194,27 +204,22 @@ void CGI::_handleWaitingState(Client *client, ServerConfig const *serverConfig,
 
 void CGI::_handleWritingState(Client             *client,
                               ServerConfig const *serverConfig) {
+    (void)serverConfig;
     ssize_t       bytes = 0;
     string const &body = client->getRequest().request.body;
 
-    if ((bytes = write(_stdinPipe[1], body.c_str() + _bodyOffset,
-                       body.size() - _bodyOffset)) <= 0) {
-        if (bytes == -1)
-            Logger::error(string("write(): ") + strerror(errno));
-        else
-            Logger::error("write(): CGI stdin closed unexpectedly");
-        close(_stdinPipe[1]);
-        client->setErrorResponse(500, serverConfig);
-        client->setState(Client::SENDING_RESPONSE);
-        client->switchToEpollOut();
-        return;
-    }
+    bytes = write(_stdinPipe[1], body.c_str() + _bodyOffset,
+                  body.size() - _bodyOffset);
+
+    if (bytes < 0) return;
 
     _bodyOffset += bytes;
 
     if (_bodyOffset >= body.size()) {
         client->setState(Client::READING_CGI);
+        client->getCgis().erase(_stdinPipe[1]);
         close(_stdinPipe[1]);
+        _stdinPipe[1] = -1;
     }
 };
 
@@ -228,7 +233,9 @@ void CGI::_handleReadingState(Client             *client,
     if (bytes > 0) {
         client->appendToCGIBuffer(buf, bytes);
     } else if (bytes == 0) {
+        client->getCgis().erase(_pipe[0]);
         close(_pipe[0]);
+        _pipe[0] = -1;
 
         int   status = 0;
         pid_t reaped = waitpid(_childPid, &status, WNOHANG);
@@ -244,10 +251,6 @@ void CGI::_handleReadingState(Client             *client,
             client->getResponse() = resp;
         }
 
-        client->setState(Client::SENDING_RESPONSE);
-        client->switchToEpollOut();
-    } else {
-        client->setErrorResponse(500, serverConfig);
         client->setState(Client::SENDING_RESPONSE);
         client->switchToEpollOut();
     }
