@@ -410,6 +410,11 @@ void Config::parseServerBlock(const std::string& block) {
 			pos = bracePos;
 
 			LocationConfig loc;
+			const std::vector<LocationConfig>& existingLocs = server.getLocations();
+			for (size_t j = 0; j < existingLocs.size(); j++) {
+				if (existingLocs[j].getPath() == locPath)
+					throw std::runtime_error("duplicate location path: " + locPath);
+			}
 			loc.setPath(locPath);
 			parseLocationBlock(inner, loc);
 			server.getLocations().push_back(loc);
