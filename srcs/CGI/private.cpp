@@ -198,8 +198,11 @@ void CGI::_handleWritingState(Client             *client,
     string const &body = client->getRequest().request.body;
 
     if ((bytes = write(_stdinPipe[1], body.c_str() + _bodyOffset,
-                       body.size() - _bodyOffset)) == -1) {
-        Logger::error(string("write(): ") + strerror(errno));
+                       body.size() - _bodyOffset)) <= 0) {
+        if (bytes == -1)
+            Logger::error(string("write(): ") + strerror(errno));
+        else
+            Logger::error("write(): CGI stdin closed unexpectedly");
         close(_stdinPipe[1]);
         client->setErrorResponse(500, serverConfig);
         client->setState(Client::SENDING_RESPONSE);
@@ -214,6 +217,7 @@ void CGI::_handleWritingState(Client             *client,
         close(_stdinPipe[1]);
     }
 };
+
 void CGI::_handleReadingState(Client             *client,
                               ServerConfig const *serverConfig) {
     char    buf[4096] = {0};
@@ -225,10 +229,20 @@ void CGI::_handleReadingState(Client             *client,
         client->appendToCGIBuffer(buf, bytes);
     } else if (bytes == 0) {
         close(_pipe[0]);
-        waitpid(_childPid, NULL, WNOHANG);
 
-        HttpResponse resp = _parseOutput(client->getCgiBuffer());
-        client->getResponse() = resp;
+        int   status = 0;
+        pid_t reaped = waitpid(_childPid, &status, WNOHANG);
+        bool  failed = (reaped > 0) && ((WIFSIGNALED(status)) ||
+                                       (WIFEXITED(status) &&
+                                        WEXITSTATUS(status) != 0));
+        if (reaped > 0) _childPid = -1;
+
+        if (failed) {
+            client->setErrorResponse(500, serverConfig);
+        } else {
+            HttpResponse resp = _parseOutput(client->getCgiBuffer());
+            client->getResponse() = resp;
+        }
 
         client->setState(Client::SENDING_RESPONSE);
         client->switchToEpollOut();

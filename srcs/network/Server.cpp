@@ -172,7 +172,7 @@ void Server::handleResponse(int clientFd) {
 
     Client *client = it->second;
 
-    if (client->send() == -1) {
+    if (client->send() <= 0) {
         _remove(clientFd);
         return;
     }
