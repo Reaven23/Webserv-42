@@ -35,6 +35,20 @@ void Client::_removeCGI(int cgiFd) {
     }
 }
 
+void Client::_finalizeCGI(CGI* cgi) {
+    if (cgi == NULL) return;
+    map<int, CGI*>::iterator it = _cgis.begin();
+    while (it != _cgis.end()) {
+        if (it->second == cgi) {
+            map<int, CGI*>::iterator tmp = it++;
+            _cgis.erase(tmp);
+        } else {
+            ++it;
+        }
+    }
+    delete cgi;
+}
+
 // Constructors
 Client::Client(int epollFd, const ServerConfig* serverConfig)
     : _fd(-1),
@@ -47,7 +61,10 @@ Client::Client(int epollFd, const ServerConfig* serverConfig)
       _cgiBuffer("") {}
 
 // Destructor
-Client::~Client() { close(_fd); };
+Client::~Client() {
+    clear();
+    close(_fd);
+};
 
 // Getters
 int Client::getFd() const { return (_fd); };
@@ -139,6 +156,8 @@ void Client::startCGI(Server* server) {
     }
 
     cgi->run(this);
+
+    if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
 };
 
 void Client::accept(int serverFd) {
@@ -196,6 +215,8 @@ void Client::runCGI(int cgiFd) {
     }
 
     cgi->run(this);
+
+    if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
 }
 
 void Client::parse() { _request = HttpRequest::parse(_buffer); }
@@ -229,8 +250,18 @@ ssize_t Client::send() {
 void Client::clear() {
     map<int, CGI*>::const_iterator it;
 
-    for (it = _cgis.begin(); it != _cgis.end(); it++) {
-        if (it->second) delete it->second;
+    for (it = _cgis.begin(); it != _cgis.end(); ++it) {
+        CGI* cgi = it->second;
+        if (cgi == NULL) continue;
+        map<int, CGI*>::const_iterator scan = _cgis.begin();
+        bool alreadySeen = false;
+        for (; scan != it; ++scan) {
+            if (scan->second == cgi) {
+                alreadySeen = true;
+                break;
+            }
+        }
+        if (!alreadySeen) delete cgi;
     }
 
     _cgis.clear();
