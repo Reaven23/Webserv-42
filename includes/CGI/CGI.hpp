@@ -34,7 +34,7 @@ class CGI {
 
     // Methods
     bool resolvePath(const HttpRequest &request);
-    void run(Client *client);
+    void run(Client *client, int firedFd = -1);
     bool pipe(HttpMethod method);
     void close(int fd);
 

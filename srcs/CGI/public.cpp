@@ -48,9 +48,6 @@ bool CGI::pipe(HttpMethod method) {
         return (false);
     };
 
-    // register pipe read-end to client instance
-    _client->getCgis()[_pipe[0]] = this;
-
     if (method == POST) {
         if (::pipe(_stdinPipe) == -1) {
             Logger::error(string("CGI::pipe(): ") + strerror(errno));
@@ -91,35 +88,28 @@ bool CGI::pipe(HttpMethod method) {
             this->close(_stdinPipe[1]);
             return (false);
         };
-
-        // register stdinPipe write-end to client instance
-        _client->getCgis()[_stdinPipe[1]] = this;
     }
+
+    // register pipes on client instance only after full success
+    _client->getCgis()[_pipe[0]] = this;
+    if (method == POST) _client->getCgis()[_stdinPipe[1]] = this;
 
     return (true);
 };
 
 void CGI::close(int fd) {
-    map<int, CGI *>          &cgis = _client->getCgis();
-    map<int, CGI *>::iterator it = cgis.find(fd);
-
-    if (it != cgis.end()) {
-        cgis.erase(it);
-    }
-
     if (fd >= 0) ::close(fd);
 }
 
-void CGI::run(Client *client) {
-    Client::State       state = client->getState();
+void CGI::run(Client *client, int firedFd) {
     ServerConfig const *serverConfig = &_server->getConfig();
     HttpMethod const    method = client->getRequest().request.method;
 
-    if (state == Client::WAITING_CGI)
+    if (firedFd == -1)
         _handleWaitingState(client, serverConfig, method);
-    else if (state == Client::WRITING_CGI)
-        _handleWritingState(client, serverConfig);
-    else if (state == Client::READING_CGI)
+    else if (firedFd == _pipe[0])
         _handleReadingState(client, serverConfig);
+    else if (firedFd == _stdinPipe[1])
+        _handleWritingState(client, serverConfig);
     setLastActivity();
 }

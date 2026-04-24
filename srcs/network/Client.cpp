@@ -98,6 +98,7 @@ time_t Client::getLastActivity() const { return (_lastActivity); };
 // Setters
 void Client::setResponse() {
     _response = HttpResponse::handleRequest(_request.request, _serverConfig);
+    _state = SENDING_RESPONSE;
 };
 
 void Client::setErrorResponse(int statusCode, ServerConfig const* config) {
@@ -128,6 +129,7 @@ void Client::setErrorResponse(int statusCode, ServerConfig const* config) {
     }
 
     _response = IHttpHandler::errorResponse(statusCode, reason, config);
+    _state = SENDING_RESPONSE;
 };
 
 void Client::setState(Client::State state) { _state = state; }
@@ -158,7 +160,7 @@ void Client::startCGI(Server* server) {
         return;
     }
 
-    cgi->run(this);
+    cgi->run(this, -1);
 
     if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
 };
@@ -170,6 +172,29 @@ void Client::accept(int serverFd) {
 }
 
 ssize_t Client::read() {
+    ostringstream oss;
+
+    char    tmp[1024] = {0};
+    ssize_t bytes = recv(_fd, tmp, sizeof(tmp), 0);
+
+    if (bytes > 0) {
+        _buffer.append(tmp, bytes);
+        setLastActivity();
+    } else if (bytes == 0) {
+        oss << "Client '" << _fd << "|" << getIp()
+            << "' has ended the connection" << endl;
+        Logger::info(oss.str());
+    } else {
+        oss << "recv(): transient error on client '" << _fd << "|" << getIp()
+            << "'";
+        Logger::error(oss.str());
+        return (1);
+    }
+
+    return (bytes);
+}
+
+void Client::logRequest() const {
     string const& serverName = _serverConfig->getServerName();
     ostringstream oss;
 
@@ -177,37 +202,12 @@ ssize_t Client::read() {
     serverName.empty() ? oss << "'No name'" : oss << "'" << serverName << "'";
     oss << " received request from client '" << _fd << "|" << getIp() << "'";
     Logger::info(oss.str());
-
-    char    tmp[1024] = {0};
-    ssize_t bytes = recv(_fd, tmp, sizeof(tmp), 0);
-
-    if (bytes > 0) {
-        _buffer.append(tmp, bytes);
-    } else if (bytes == 0) {
-        oss.str("");
-        oss.clear();
-
-        oss << "Client '" << _fd << "|" << getIp()
-            << "' has ended the connection" << endl;
-        Logger::info(oss.str());
-    } else {
-        oss.str("");
-        oss.clear();
-
-        oss << "recv(): Failed to read data from client '" << _fd << "|"
-            << getIp() << "'";
-        oss << strerror(errno);
-
-        Logger::error(oss.str());
-    }
-
-    if (bytes > 0) setLastActivity();
-
-    return (bytes);
 }
 
 void Client::runCGI(int cgiFd) {
-    CGI* cgi = _cgis[cgiFd];
+    map<int, CGI*>::iterator it = _cgis.find(cgiFd);
+    if (it == _cgis.end() || it->second == NULL) return;
+    CGI* cgi = it->second;
 
     if (_request.request.method != GET && _request.request.method != POST) {
         applyVersion();
@@ -217,7 +217,7 @@ void Client::runCGI(int cgiFd) {
         return;
     }
 
-    cgi->run(this);
+    cgi->run(this, cgiFd);
 
     if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
 }
@@ -227,6 +227,8 @@ void Client::parse() { _request = HttpRequest::parse(_buffer); }
 ssize_t Client::send() {
     ostringstream os;
 
+    if (_state != SENDING_RESPONSE) return (-1);
+
     if (_sendBuffer.empty()) {
         _sendBuffer = _response.toString();
     }
@@ -234,20 +236,20 @@ ssize_t Client::send() {
     ssize_t bytes = ::send(_fd, _sendBuffer.c_str() + _sendOffset,
                            _sendBuffer.size() - _sendOffset, 0);
 
-    if (bytes <= 0) {
-        os << "send(): Failed to send data to client '" << _fd << "|" << getIp()
-           << "'" << endl;
-        if (bytes == -1)
-            os << strerror(errno);
-        else
-            os << "connection closed by peer";
-
+    if (bytes < 0) {
+        os << "send(): transient error on client '" << _fd << "|" << getIp()
+           << "'";
+        Logger::error(os.str());
+        return (1);
+    }
+    if (bytes == 0) {
+        os << "send(): connection closed by peer '" << _fd << "|" << getIp()
+           << "'";
         Logger::error(os.str());
         return (-1);
     }
 
     _sendOffset += bytes;
-
     setLastActivity();
 
     return (bytes);

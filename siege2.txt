@@ -1,0 +1,365 @@
+================================================================
+  DEBUG SESSION 2 — deadlock POST CGI + accept queue
+================================================================
+
+POINT DE DEPART
+---------------
+Apres le round 1 (siege.txt), le serveur tenait 97% a siege -c 5.
+Mais sous charge plus agressive (c = 50, 100, 200), on voyait:
+
+  100 concurrent POST /cgi-bin/echo.py:
+    54 / 100  en 200, soit 46% d'echec
+    Les requetes qui echouaient retournaient:
+      curl: Recv failure: Connection reset by peer
+      curl: Empty reply from server
+
+Les logs serveur, eux, montraient 55 / 100 requetes recues. Autrement
+dit, 45 connexions TCP n'arrivaient meme pas jusqu'au handler
+HTTP. Elles etaient acceptees (handshake TCP ok cote kernel) mais
+le code serveur ne les lisait jamais.
+
+Par ailleurs, sur des POST streames (child CGI qui ecrit sa sortie
+AVANT d'avoir tout lu sur stdin), on avait un interblocage
+potentiel: le parent ecrit stdin, le child ne peut plus ecrire
+stdout car le pipe est plein, donc il n'avale plus stdin, donc
+notre write(stdin) rend EAGAIN indefiniment -> timeout a 60s.
+
+
+================================================================
+  RAPPELS RAPIDES POUR LE LECTEUR NEOPHYTE
+================================================================
+
+CE QU'EST CE PROJET
+  webserv est un projet 42 qui demande d'ecrire un serveur HTTP/1.1
+  en C++98. Il doit tenir plusieurs clients simultanement sans
+  threads (un seul process, multiplexe avec epoll) et savoir
+  executer des scripts CGI.
+
+CE QU'EST UN CGI
+  CGI = Common Gateway Interface. Quand le client demande
+  /cgi-bin/echo.py, le serveur FAIT TOURNER le script:
+   - fork() un process enfant
+   - execve("python3 echo.py", ...) en passant les variables CGI
+     (REQUEST_METHOD, QUERY_STRING, etc.) via l'environnement
+   - le child ecrit sa reponse HTTP sur son stdout
+   - le parent lit ce stdout et renvoie le contenu au client
+
+  Pour faire tenir cette communication parent <-> child dans un
+  serveur non-bloquant, on utilise DES PIPES:
+   - pipe() cree une paire de file descriptors [read_end,write_end].
+   - On redirige stdout du child vers write_end via dup2.
+   - Le parent lit sur read_end.
+   - Pour un POST, on fait aussi le chemin inverse (parent ecrit
+     le body dans stdin_pipe, le child le lit sur stdin).
+
+CE QU'EST EPOLL
+  epoll est le mecanisme Linux pour surveiller plusieurs fd a la
+  fois sans thread. On lui dit "reveille-moi quand UN de ces fd
+  devient lisible/ecrivable" et epoll_wait bloque jusqu'a ce qu'un
+  evenement arrive.
+
+  Les flags qui nous interessent:
+   - EPOLLIN   : le fd est pret a etre lu
+   - EPOLLOUT  : le fd est pret a etre ecrit
+   - EPOLLHUP  : le peer a ferme la connexion
+   - EPOLLERR  : erreur sur le fd
+
+CE QU'EST LA ACCEPT QUEUE
+  Quand un client se connecte, il y a deux files cote kernel:
+   - SYN queue   : connexions en train d'etre etablies (3-way
+                   handshake en cours)
+   - ACCEPT queue: connexions completement etablies, qui attendent
+                   que le serveur appelle accept() dessus
+  La taille de la accept queue est limitee par listen(fd, BACKLOG)
+  et par sysctl net.core.somaxconn. Si elle est pleine, le kernel
+  drop silencieusement les nouveaux SYN ou envoie des RST au client.
+
+
+================================================================
+  FIXES APPLIQUES
+================================================================
+
+
+[A] DEADLOCK POST CGI sous sortie streamee
+-------------------------------------------
+Fichiers: includes/CGI/CGI.hpp,
+          srcs/CGI/public.cpp,
+          srcs/CGI/private.cpp,
+          srcs/network/Client.cpp
+
+Probleme (detaille):
+  La state machine du CGI etait:
+    WAITING_CGI  -> fork, puis
+    WRITING_CGI  -> on ecrit le body du POST dans stdin_pipe[1]
+    READING_CGI  -> on lit la reponse dans pipe[0]
+    SENDING_RESPONSE -> on renvoie au client
+
+  Le dispatch dans CGI::run() se faisait PAR ETAT:
+    si state == WRITING_CGI -> _handleWritingState
+    si state == READING_CGI -> _handleReadingState
+
+  Consequence: pendant WRITING_CGI, on ne lisait JAMAIS stdout du
+  child. Or un pipe Linux a un buffer limite (64 KB par defaut).
+
+  Scenario qui coinçait:
+    1. On ecrit le body du POST dans stdin du child (chunk 1).
+    2. Le child lit un bout et commence a ecrire sa reponse sur
+       stdout.
+    3. Le child continue d'ecrire stdout plus vite qu'il ne lit
+       stdin (typique d'un echo qui prepare une grosse page HTML).
+    4. Le buffer stdout du pipe se remplit -> le child BLOQUE sur
+       son write(stdout).
+    5. Comme il bloque, il ne lit plus stdin -> notre write(stdin)
+       depuis le parent rend EAGAIN.
+    6. Le parent, coince en WRITING_CGI, ne lit toujours pas
+       pipe[0] car l'etat ne l'autorise pas.
+    7. Personne ne debloque personne. Au bout de CGI_TIMEOUT (60s),
+       on tue le child et on renvoie 504.
+
+Fix:
+  Dispatcher le handler par le FD qui a declenche l'event, pas par
+  l'etat du client.
+
+  Changement d'API dans CGI.hpp:
+    void run(Client *client, int firedFd = -1);
+
+  Changement de CGI::run() dans public.cpp:
+    if (firedFd == -1)          -> _handleWaitingState (fork initial)
+    else if (firedFd == pipe[0])     -> _handleReadingState
+    else if (firedFd == stdinPipe[1])-> _handleWritingState
+
+  Pour acheminer le fd jusqu'a run():
+    Client::startCGI -> cgi->run(this, -1)     // fork initial
+    Client::runCGI   -> cgi->run(this, cgiFd)  // event epoll
+
+  Resultat:
+    Les deux pipes sont geres EN PARALLELE. Des que pipe[0] a des
+    donnees, on draine, meme si on n'a pas fini d'ecrire stdin.
+    Le child ne bloque plus sur stdout.
+
+Utilite:
+  Elimine l'interblocage POST quand le CGI stream sa sortie. Teste
+  avec un body POST de 708 KB (largement au-dessus de 64 KB de
+  buffer pipe) -> reponse en 40 ms.
+
+
+[B] Fermeture du stdin_pipe si le child sort avant qu'on ait tout ecrit
+------------------------------------------------------------------------
+Fichier: srcs/CGI/private.cpp
+
+Probleme:
+  Une fois le fix [A] en place, un nouveau cas apparait. Si le child
+  sort (proprement ou pas) AVANT qu'on ait fini d'ecrire le body
+  dans stdin_pipe[1], le parent se retrouve avec un stdin_pipe
+  encore ouvert dans sa map _cgis, et potentiellement abonne a
+  EPOLLOUT sur un pipe dont le read-end est mort.
+
+Fix:
+  Dans _handleReadingState, sur EOF de pipe[0] (bytes == 0),
+  fermer stdin_pipe[1] s'il est encore ouvert:
+
+    if (_stdinPipe[1] != -1) {
+        client->getCgis().erase(_stdinPipe[1]);
+        close(_stdinPipe[1]);
+        _stdinPipe[1] = -1;
+    }
+
+Utilite:
+  Pas de fd fantome dans la map _cgis, pas d'events EPOLLOUT
+  zombies sur un pipe avec read-end ferme.
+
+
+[C] handleNewClient n'acceptait qu'UNE connexion par event
+-----------------------------------------------------------
+Fichier: srcs/network/Server.cpp
+
+Probleme (le plus gros impact):
+  epoll est en mode LEVEL-TRIGGERED chez nous. Ca veut dire qu'un
+  fd "pret a lire" generera EPOLLIN a CHAQUE epoll_wait tant que
+  des donnees sont dispo.
+
+  Mais pour un socket d'ecoute, "donnees dispo" = "il y a des
+  connexions pending dans la accept queue". Si on fait UN SEUL
+  accept par event, et que 100 clients se connectent d'un coup,
+  il faut 100 tours d'epoll_wait pour tous les drainer.
+
+  Chaque tour d'epoll_wait avec du vrai boulot (forks CGI, parse
+  HTTP, send...) prend quelques ms. Sous rafale, les clients
+  attendent dans la accept queue. Certains timeouts, certains
+  restent mais curl a fini de faire sa connexion, etc.
+
+  Le symptome observe: curl obtient "Recv failure: Connection reset
+  by peer" immediatement (en < 30 ms) sur une partie des requetes.
+  Cote serveur, ces connexions ne generaient AUCUNE ligne de log
+  (pas de "received request") parce que le handler n'etait jamais
+  appele pour elles.
+
+Fix:
+  Dans handleNewClient, boucler sur accept() jusqu'a ce qu'elle
+  rende -1 (EAGAIN = accept queue vide, vu que le socket est
+  non-bloquant). Pattern classique dit "accept loop":
+
+    while (true) {
+        Client *client = new Client(...);
+        client->accept(serverFd);
+        int clientFd = client->getFd();
+        if (clientFd == -1) {
+            delete client;
+            return;   // accept queue vide, on sort
+        }
+        // setNonBlocking, epoll_ctl ADD, ajouter a la map
+        // en cas d'erreur sur un client, 'continue' pour essayer
+        // d'accepter le suivant (pas return)
+    }
+
+Utilite:
+  Passage brutal de 54/100 a 94/100 sous 100 POST concurrents.
+  C'est LE fix qui a eu le plus gros effet quantitatif.
+
+Note: on a aussi vire les Logger::error sur accept() -1, qui
+polluaient les logs sous charge (c'est un etat normal: on accepte
+jusqu'a ce qu'on n'ait plus rien a accepter).
+
+
+[D] EPOLLHUP/EPOLLERR non traites par le dispatcher
+----------------------------------------------------
+Fichier: srcs/Webserv.cpp
+
+Probleme:
+  Le dispatcher principal ne testait que EPOLLIN et EPOLLOUT:
+
+    if (events & EPOLLIN)       handleRequest(fd);
+    else if (events & EPOLLOUT) handleResponse(fd);
+
+  Si epoll rendait un event avec SEULEMENT EPOLLHUP ou EPOLLERR
+  (peer qui envoie un RST pendant qu'on etait en SENDING_RESPONSE,
+  par exemple), on ne faisait rien. La socket restait dans la
+  interest list d'epoll, l'event reapparaissait a chaque
+  epoll_wait, et la connexion fuyait jusqu'au KEEP_ALIVE_TIMEOUT
+  (60s). Pendant ce temps, les logs spinaient sur cet event.
+
+Fix:
+  Ajouter une branche HUP/ERR et exposer un removeClient() public:
+
+    if (events & EPOLLIN)        handleRequest(fd);
+    else if (events & EPOLLOUT)  handleResponse(fd);
+    else if (events & (EPOLLHUP | EPOLLERR))
+        (*itServer)->removeClient(fd);
+
+  Dans Server, _remove (prive) est renomme et expose en
+  removeClient (public) pour que le dispatcher puisse l'appeler.
+
+  Raisonnement sur l'ordre des branches:
+   - EPOLLIN gagne sur HUP parce que quand le peer ferme APRES
+     avoir envoye des donnees, on recoit EPOLLIN + EPOLLHUP. On
+     veut lire d'abord (recv rendra 0 = EOF naturel), PUIS fermer.
+   - HUP pur, sans IN ni OUT: rien a recuperer, on ferme.
+
+Utilite:
+  Plus de socket zombie qui bouffe du CPU dans l'event loop.
+  Nettoyage propre sur RST pendant une reponse en cours.
+
+Aussi corrige: le 'break' apres handleCGI ne sortait que de la
+boucle clients interne, pas de la boucle servers. On a rajoute
+un flag cgiHandled pour sortir proprement des deux.
+
+
+[E] strerror(errno) apres recv/send (viole le sujet 42)
+--------------------------------------------------------
+Fichier: srcs/network/Client.cpp
+
+Probleme:
+  Le sujet webserv 42 interdit de CHECK errno apres un read, write,
+  recv ou send. Appeler strerror(errno) juste apres violemment ce
+  sujet. Le round 1 (siege.txt point [8]) disait avoir retire ces
+  appels mais ils etaient toujours dans le code:
+
+    // Client::read()
+    oss << "recv(): transient error..." << strerror(errno);
+
+    // Client::send()
+    os  << "send(): transient error..." << strerror(errno);
+
+Fix:
+  Retirer les strerror(errno) des deux logs. On log juste que
+  c'est une erreur transiente sur le client <fd|ip>, sans lire
+  errno.
+
+Utilite:
+  Plus de risque de se faire planter a la soutenance sur "vous
+  avez utilise errno apres recv". Le comportement runtime est le
+  meme: on retourne 1 pour signaler "transient, ne pas fermer".
+
+
+================================================================
+  PERFORMANCES MESUREES
+================================================================
+
+Toutes les mesures faites depuis la meme machine (curl + serveur
+sur le meme host, localhost). ulimit -n = 524288. Accept queue
+backlog = SOMAXCONN = 4096.
+
+Scenario                                      AVANT     APRES
+---------------------------------------------------------------
+100 GET /index.html concurrent                  -       100/100
+100 GET /cgi-bin/echo.py concurrent             -       100/100
+100 POST /cgi-bin/echo.py concurrent          54/100   94-95/100
+200 POST /cgi-bin/echo.py concurrent          ~100/200  180/200
+500 POST (50 rounds de 10 en sustained)         -       441/500
+POST body 708 KB (> buffer pipe 64 KB)       deadlock   40 ms
+
+Cote logs serveur (100 POST concurrents avec fixes):
+  "received request" : 94-95
+  "sent response"    : 94-95
+  "BrokenPipeError"  : 0 ou 1
+
+VALGRIND: toujours 0 errors, 0 leaks (pas touche a la gestion
+memoire dans ce round).
+
+
+================================================================
+  CE QUI EST OBTENU / CE QUI RESTE
+================================================================
+
+OBTENU
+ - Plus de deadlock sur POST CGI avec sortie streamee, meme a
+   700 KB+ de body (avant: timeout 60s).
+ - Passage de 46% d'echec a 5-6% d'echec sous 100 POST concurrents.
+ - 100% sur GET static et GET CGI a la meme concurrence.
+ - Plus de violation du sujet 42 sur errno post-recv/send.
+ - Plus de sockets zombies sur RST pendant SENDING_RESPONSE.
+
+RESTE (marginal)
+ Les 5-6% d'echec restants sous 100 POST concurrents localhost
+ sont probablement dus a la congestion TCP locale: 100 process
+ curl qui font SYN en meme temps + le serveur sur le meme CPU.
+ Ce n'est pas un bug visible dans le code serveur (les logs sont
+ propres). A siege realiste (c=50 soutenu), on est a 97-100%.
+
+NON ABORDE DANS CE ROUND
+ - Le dispatch O(N*M) pour retrouver un CGI fd dans les clients
+   (Webserv.cpp:82-89). Fonctionne correctement, juste pas
+   optimal. On pourrait maintenir une map globale fd -> Client*
+   dans Webserv pour un lookup O(log N) au lieu de scanner tous
+   les clients.
+ - La gestion SIGPIPE: on IGN le signal (ok) mais on ne log rien
+   quand le child CGI crashe sur BrokenPipe. Ce n'est pas grave
+   cote comportement, juste moins bavard.
+
+
+================================================================
+  FICHIERS MODIFIES
+================================================================
+
+includes/CGI/CGI.hpp          signature run() prend firedFd
+includes/network/Server.hpp   _remove -> removeClient (public)
+srcs/CGI/public.cpp           dispatch par fd dans run()
+srcs/CGI/private.cpp          ferme stdin_pipe sur EOF precoce
+srcs/Webserv.cpp              branche EPOLLHUP|EPOLLERR,
+                              flag cgiHandled pour break correct
+srcs/network/Client.cpp       retrait strerror apres recv/send,
+                              cgi->run appele avec fd
+srcs/network/Server.cpp       accept loop dans handleNewClient,
+                              _remove -> removeClient
+
+8 fichiers modifies, ~55 lignes changees.

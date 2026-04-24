@@ -22,7 +22,6 @@ class Server {
     std::map<int, Client*> _clients;
 
     // Methods
-    void _remove(int clientFd);
     void _clear();
 
    public:
@@ -54,6 +53,8 @@ class Server {
     void handleResponse(int clientFd);
 
     void handleCGI(int clientFd, int cgiFd);
+
+    void removeClient(int clientFd);
 
     void closeIdleConnections();
 };
