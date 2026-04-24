@@ -38,7 +38,7 @@ int Server::getFd() const { return (_socket.getFd()); };
 const map<int, Client *> &Server::getClients() const { return (_clients); };
 
 // Private methods
-void Server::_remove(int clientFd) {
+void Server::removeClient(int clientFd) {
     map<int, Client *>::const_iterator it = _clients.find(clientFd);
 
     if (it != _clients.end() && it->second) {
@@ -70,7 +70,7 @@ void Server::closeIdleConnections() {
         if (now - it->second->getLastActivity() > KEEP_ALIVE_TIMEOUT) {
             int fd = it->first;
             it++;
-            _remove(fd);
+            removeClient(fd);
         } else {
             it->second->closeTimeoutCGIs();
             it++;
@@ -81,41 +81,39 @@ void Server::closeIdleConnections() {
 void Server::handleNewClient() {
     int serverFd = getFd();
 
-    Client *client = new Client(_epollFd, &_config);
+    // Drain the accept queue in one shot. The server socket is non-blocking;
+    // accept returns -1 when the queue is empty, which is our loop exit.
+    while (true) {
+        Client *client = new Client(_epollFd, &_config);
 
-    client->accept(serverFd);
+        client->accept(serverFd);
 
-    int clientFd = client->getFd();
+        int clientFd = client->getFd();
 
-    if (clientFd == -1) {
-        Logger::error(std::string("accept(): Failed to accept connection: ") +
-                      strerror(errno));
-        delete client;
+        if (clientFd == -1) {
+            delete client;
+            return;
+        }
 
-        return;
+        if (!setNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
+            Logger::error(string("fcntl(): ") + strerror(errno));
+            delete client;
+            continue;
+        }
+
+        epoll_event clientEvent = {};
+        clientEvent.events = EPOLLIN;
+        clientEvent.data.fd = clientFd;
+
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
+            Logger::error(string("epoll_ctl() (client): ") + strerror(errno));
+            close(clientFd);
+            delete client;
+            continue;
+        }
+
+        _clients[clientFd] = client;
     }
-
-    // Set new socket to non-blocking + close-on-exec (pour ne pas leak les fd
-    // dans les child CGI)
-    if (!setNonBlocking(clientFd) || !setCloseOnExec(clientFd)) {
-        Logger::error(string("fcntl(): ") + strerror(errno));
-        delete client;
-        return;
-    }
-
-    // Add new socket to epoll interest list
-    epoll_event clientEvent = {};
-    clientEvent.events = EPOLLIN;
-    clientEvent.data.fd = clientFd;
-
-    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &clientEvent) == -1) {
-        Logger::error(string("epoll_ctl() (client): ") + strerror(errno));
-        close(clientFd);
-        delete client;
-        return;
-    }
-
-    _clients[clientFd] = client;
 };
 
 void Server::handleRequest(int clientFd) {
@@ -128,7 +126,7 @@ void Server::handleRequest(int clientFd) {
     if (client->getState() != Client::NO_CGI) return;
 
     if (client->read() <= 0) {
-        _remove(clientFd);
+        removeClient(clientFd);
         return;
     }
 
@@ -174,7 +172,7 @@ void Server::handleResponse(int clientFd) {
     Client *client = it->second;
 
     if (client->send() <= 0) {
-        _remove(clientFd);
+        removeClient(clientFd);
         return;
     }
 
@@ -195,7 +193,7 @@ void Server::handleResponse(int clientFd) {
                               strerror(errno));
             }
         } else
-            _remove(clientFd);
+            removeClient(clientFd);
     }
 };
 

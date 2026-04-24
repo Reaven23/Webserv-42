@@ -160,7 +160,7 @@ void Client::startCGI(Server* server) {
         return;
     }
 
-    cgi->run(this);
+    cgi->run(this, -1);
 
     if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
 };
@@ -186,7 +186,7 @@ ssize_t Client::read() {
         Logger::info(oss.str());
     } else {
         oss << "recv(): transient error on client '" << _fd << "|" << getIp()
-            << "': " << strerror(errno);
+            << "'";
         Logger::error(oss.str());
         return (1);
     }
@@ -217,7 +217,7 @@ void Client::runCGI(int cgiFd) {
         return;
     }
 
-    cgi->run(this);
+    cgi->run(this, cgiFd);
 
     if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
 }
@@ -238,7 +238,7 @@ ssize_t Client::send() {
 
     if (bytes < 0) {
         os << "send(): transient error on client '" << _fd << "|" << getIp()
-           << "': " << strerror(errno);
+           << "'";
         Logger::error(os.str());
         return (1);
     }

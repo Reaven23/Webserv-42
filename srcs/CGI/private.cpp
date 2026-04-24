@@ -208,6 +208,8 @@ void CGI::_handleWritingState(Client             *client,
     ssize_t       bytes = 0;
     string const &body = client->getRequest().request.body;
 
+    if (_stdinPipe[1] == -1) return;
+
     bytes = write(_stdinPipe[1], body.c_str() + _bodyOffset,
                   body.size() - _bodyOffset);
 
@@ -216,7 +218,6 @@ void CGI::_handleWritingState(Client             *client,
     _bodyOffset += bytes;
 
     if (_bodyOffset >= body.size()) {
-        client->setState(Client::READING_CGI);
         client->getCgis().erase(_stdinPipe[1]);
         close(_stdinPipe[1]);
         _stdinPipe[1] = -1;
@@ -236,6 +237,12 @@ void CGI::_handleReadingState(Client             *client,
         client->getCgis().erase(_pipe[0]);
         close(_pipe[0]);
         _pipe[0] = -1;
+
+        if (_stdinPipe[1] != -1) {
+            client->getCgis().erase(_stdinPipe[1]);
+            close(_stdinPipe[1]);
+            _stdinPipe[1] = -1;
+        }
 
         int   status = 0;
         pid_t reaped = waitpid(_childPid, &status, WNOHANG);

@@ -76,17 +76,22 @@ void Webserv::_runEventLoop() const {
                         (*itServer)->handleRequest(fd);
                     else if (events & EPOLLOUT)
                         (*itServer)->handleResponse(fd);
+                    else if (events & (EPOLLHUP | EPOLLERR))
+                        (*itServer)->removeClient(fd);
                     break;
                 }
                 // Check for CGI events
+                bool cgiHandled = false;
                 for (itClient = clientsMap.begin();
                      itClient != clientsMap.end(); ++itClient) {
                     map<int, CGI*>& cgis = itClient->second->getCgis();
                     if (cgis.find(fd) != cgis.end()) {
                         (*itServer)->handleCGI(itClient->first, fd);
+                        cgiHandled = true;
                         break;
                     }
                 }
+                if (cgiHandled) break;
             }
         }
     }

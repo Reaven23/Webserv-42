@@ -101,16 +101,15 @@ void CGI::close(int fd) {
     if (fd >= 0) ::close(fd);
 }
 
-void CGI::run(Client *client) {
-    Client::State       state = client->getState();
+void CGI::run(Client *client, int firedFd) {
     ServerConfig const *serverConfig = &_server->getConfig();
     HttpMethod const    method = client->getRequest().request.method;
 
-    if (state == Client::WAITING_CGI)
+    if (firedFd == -1)
         _handleWaitingState(client, serverConfig, method);
-    else if (state == Client::WRITING_CGI)
-        _handleWritingState(client, serverConfig);
-    else if (state == Client::READING_CGI)
+    else if (firedFd == _pipe[0])
         _handleReadingState(client, serverConfig);
+    else if (firedFd == _stdinPipe[1])
+        _handleWritingState(client, serverConfig);
     setLastActivity();
 }
