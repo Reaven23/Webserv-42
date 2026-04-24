@@ -10,7 +10,7 @@
 #include "../http/HttpResponse.hpp"
 #include "../network/Server.hpp"
 
-const int CGI_TIMEOUT = 60;
+const int CGI_TIMEOUT = 45;
 
 class ServerConfig;
 
