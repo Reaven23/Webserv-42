@@ -84,8 +84,9 @@ void Webserv::_runEventLoop() const {
                 bool cgiHandled = false;
                 for (itClient = clientsMap.begin();
                      itClient != clientsMap.end(); ++itClient) {
-                    map<int, CGI*>& cgis = itClient->second->getCgis();
-                    if (cgis.find(fd) != cgis.end()) {
+                    map<int, CGI*>& cgisLookup =
+                        itClient->second->getCgisLookup();
+                    if (cgisLookup.find(fd) != cgisLookup.end()) {
                         (*itServer)->handleCGI(itClient->first, fd);
                         cgiHandled = true;
                         break;

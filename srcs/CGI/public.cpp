@@ -91,8 +91,8 @@ bool CGI::pipe(HttpMethod method) {
     }
 
     // register pipes on client instance only after full success
-    _client->getCgis()[_pipe[0]] = this;
-    if (method == POST) _client->getCgis()[_stdinPipe[1]] = this;
+    _client->getCgisLookup()[_pipe[0]] = this;
+    if (method == POST) _client->getCgisLookup()[_stdinPipe[1]] = this;
 
     return (true);
 };

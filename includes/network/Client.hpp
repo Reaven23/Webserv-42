@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <cstring>
 #include <ctime>
+#include <set>
 #include <string>
 
 #include "../../includes/http/HttpRequest.hpp"
@@ -44,7 +45,8 @@ class Client {
     std::string              getIp() const;
     ParsedHttpRequest const& getRequest();
     HttpResponse&            getResponse();
-    std::map<int, CGI*>&     getCgis();
+    std::set<CGI*>&          getCgisOwned();
+    std::map<int, CGI*>&     getCgisLookup();
     std::string&             getCgiBuffer();
     time_t                   getLastActivity() const;
 
@@ -94,11 +96,12 @@ class Client {
     time_t              _lastActivity;
     const ServerConfig* _serverConfig;
     // CGI
-    std::map<int, CGI*> _cgis;
+    std::set<CGI*>      _cgisOwned;
+    std::map<int, CGI*> _cgisLookup;
     std::string         _cgiBuffer;
 
     // Methods
-    void        _removeCGI(int cgiFd);
+    void        _removeCGI(CGI* cgi);
     void        _finalizeCGI(CGI* cgi);
     static bool _endsWith(const std::string& value, const std::string& suffix);
 };

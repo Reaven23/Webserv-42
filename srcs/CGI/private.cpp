@@ -114,13 +114,13 @@ void CGI::_handleWaitingState(Client *client, ServerConfig const *serverConfig,
     if ((pid = fork()) == -1) {
         Logger::error(string("fork(): ") + strerror(errno));
 
-        client->getCgis().erase(_pipe[0]);
+        client->getCgisLookup().erase(_pipe[0]);
         close(_pipe[0]);
         close(_pipe[1]);
         _pipe[0] = -1;
         _pipe[1] = -1;
         if (method == POST) {
-            client->getCgis().erase(_stdinPipe[1]);
+            client->getCgisLookup().erase(_stdinPipe[1]);
             close(_stdinPipe[0]);
             close(_stdinPipe[1]);
             _stdinPipe[0] = -1;
@@ -218,7 +218,7 @@ void CGI::_handleWritingState(Client             *client,
     _bodyOffset += bytes;
 
     if (_bodyOffset >= body.size()) {
-        client->getCgis().erase(_stdinPipe[1]);
+        client->getCgisLookup().erase(_stdinPipe[1]);
         close(_stdinPipe[1]);
         _stdinPipe[1] = -1;
     }
@@ -234,21 +234,21 @@ void CGI::_handleReadingState(Client             *client,
     if (bytes > 0) {
         client->appendToCGIBuffer(buf, bytes);
     } else if (bytes == 0) {
-        client->getCgis().erase(_pipe[0]);
+        client->getCgisLookup().erase(_pipe[0]);
         close(_pipe[0]);
         _pipe[0] = -1;
 
         if (_stdinPipe[1] != -1) {
-            client->getCgis().erase(_stdinPipe[1]);
+            client->getCgisLookup().erase(_stdinPipe[1]);
             close(_stdinPipe[1]);
             _stdinPipe[1] = -1;
         }
 
         int   status = 0;
         pid_t reaped = waitpid(_childPid, &status, WNOHANG);
-        bool  failed = (reaped > 0) && ((WIFSIGNALED(status)) ||
-                                       (WIFEXITED(status) &&
-                                        WEXITSTATUS(status) != 0));
+        bool  failed =
+            (reaped > 0) && ((WIFSIGNALED(status)) ||
+                             (WIFEXITED(status) && WEXITSTATUS(status) != 0));
         if (reaped > 0) _childPid = -1;
 
         if (failed) {
