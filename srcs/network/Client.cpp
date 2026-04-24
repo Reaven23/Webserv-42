@@ -22,31 +22,47 @@ bool Client::_endsWith(const string& value, const string& suffix) {
            0;
 }
 
-void Client::_removeCGI(int cgiFd) {
-    map<int, CGI*>::const_iterator it = _cgis.find(cgiFd);
+void Client::_removeCGI(CGI* cgi) {
+    set<CGI*>::const_iterator it = _cgisOwned.find(cgi);
 
-    if (it != _cgis.end() && it->second) {
-        pid_t childPid = it->second->getChildPid();
+    if (it != _cgisOwned.end() && *it) {
+        pid_t childPid = (*it)->getChildPid();
 
         kill(childPid, SIGKILL);
         waitpid(childPid, NULL, 0);
-        delete it->second;
-        _cgis.erase(it->first);
+        _cgisOwned.erase(*it);
+
+        map<int, CGI*>::iterator itLookup;
+        for (itLookup = _cgisLookup.begin(); itLookup != _cgisLookup.end();) {
+            if (itLookup->second == cgi) {
+                _cgisLookup.erase(itLookup++);
+            } else {
+                ++itLookup;
+            }
+        }
+
+        delete cgi;
     }
 }
 
 void Client::_finalizeCGI(CGI* cgi) {
     if (cgi == NULL) return;
-    map<int, CGI*>::iterator it = _cgis.begin();
-    while (it != _cgis.end()) {
-        if (it->second == cgi) {
-            map<int, CGI*>::iterator tmp = it++;
-            _cgis.erase(tmp);
-        } else {
-            ++it;
+
+    set<CGI*>::iterator it = _cgisOwned.find(cgi);
+
+    if (it != _cgisOwned.end()) {
+        _cgisOwned.erase(it);
+
+        map<int, CGI*>::iterator itLookup;
+        for (itLookup = _cgisLookup.begin(); itLookup != _cgisLookup.end();) {
+            if (itLookup->second == cgi) {
+                _cgisLookup.erase(itLookup++);
+            } else
+                ++itLookup;
         }
+
+        delete cgi;
     }
-    delete cgi;
 }
 
 // Constructors
@@ -87,7 +103,9 @@ string Client::getIp() const {
 
 ParsedHttpRequest const& Client::getRequest() { return (_request); };
 
-map<int, CGI*>& Client::getCgis() { return (_cgis); };
+set<CGI*>& Client::getCgisOwned() { return (_cgisOwned); };
+
+map<int, CGI*>& Client::getCgisLookup() { return (_cgisLookup); };
 
 string& Client::getCgiBuffer() { return (_cgiBuffer); };
 
@@ -160,6 +178,7 @@ void Client::startCGI(Server* server) {
         return;
     }
 
+    _cgisOwned.insert(cgi);
     cgi->run(this, -1);
 
     if (_state == SENDING_RESPONSE) _finalizeCGI(cgi);
@@ -205,8 +224,8 @@ void Client::logRequest() const {
 }
 
 void Client::runCGI(int cgiFd) {
-    map<int, CGI*>::iterator it = _cgis.find(cgiFd);
-    if (it == _cgis.end() || it->second == NULL) return;
+    map<int, CGI*>::iterator it = _cgisLookup.find(cgiFd);
+    if (it == _cgisLookup.end() || it->second == NULL) return;
     CGI* cgi = it->second;
 
     if (_request.request.method != GET && _request.request.method != POST) {
@@ -256,23 +275,15 @@ ssize_t Client::send() {
 }
 
 void Client::clear() {
-    map<int, CGI*>::const_iterator it;
+    set<CGI*>::const_iterator it;
 
-    for (it = _cgis.begin(); it != _cgis.end(); ++it) {
-        CGI* cgi = it->second;
-        if (cgi == NULL) continue;
-        map<int, CGI*>::const_iterator scan = _cgis.begin();
-        bool                           alreadySeen = false;
-        for (; scan != it; ++scan) {
-            if (scan->second == cgi) {
-                alreadySeen = true;
-                break;
-            }
-        }
-        if (!alreadySeen) delete cgi;
+    for (it = _cgisOwned.begin(); it != _cgisOwned.end(); ++it) {
+        if (*it == NULL) continue;
+        delete *it;
     }
 
-    _cgis.clear();
+    _cgisOwned.clear();
+    _cgisLookup.clear();
 }
 
 void Client::reset() {
@@ -392,18 +403,18 @@ void Client::logResponse() const {
 }
 
 void Client::closeTimeoutCGIs() {
-    time_t                         now = time(NULL);
-    map<int, CGI*>::const_iterator it = _cgis.begin();
-    bool                           timedOut = false;
+    time_t                    now = time(NULL);
+    set<CGI*>::const_iterator it = _cgisOwned.begin();
+    bool                      timedOut = false;
 
-    while (it != _cgis.end()) {
-        if (now - it->second->getLastActivity() > CGI_TIMEOUT) {
-            int fd = it->first;
-            it++;
-            _removeCGI(fd);
+    while (it != _cgisOwned.end()) {
+        set<CGI*>::const_iterator next = it;
+        ++next;
+        if (now - (*it)->getLastActivity() > CGI_TIMEOUT) {
+            _removeCGI(*it);
             timedOut = true;
-        } else
-            it++;
+        }
+        it = next;
     }
 
     if (timedOut && _state != SENDING_RESPONSE && _state != NO_CGI) {
